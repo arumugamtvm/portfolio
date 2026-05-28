@@ -524,3 +524,146 @@ footer {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   STARFIELD OS — 3D explore-depth + click-burst layer
+   Pointer signal is published as --px/--py on :root by the engine in
+   script.js (one rAF loop). Layers consume it in their OWN transform so
+   nothing clobbers the JS-driven card tilt / magnetic buttons.
+   ════════════════════════════════════════════════════════════════ */
+:root {
+  --px: 0;            /* eased pointer X, range ~[-1,1] (0 = center)  */
+  --py: 0;            /* eased pointer Y, range ~[-1,1]               */
+  --par-bg: 16px;     /* aurora parallax travel  (deepest -> least)  */
+  --par-grid: 26px;   /* grid parallax travel                        */
+}
+
+/* Interactive constellation field — ambient depth plane.
+   z-index -1 + appended last in <body> => sits above aurora(-2)/grid(-1)
+   but strictly below content; pointer-events:none so it never blocks UI. */
+.depth-canvas {
+  position: fixed; inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.8;
+  will-change: transform;
+}
+
+/* Pointer parallax on the ambient layers. No CSS transition here — the
+   engine already eases --px/--py every frame, so this stays frame-synced. */
+.aurora {
+  transform: translate3d(calc(var(--px) * var(--par-bg) * -1),
+                         calc(var(--py) * var(--par-bg) * -1), 0);
+  will-change: transform;
+}
+.grid-overlay {
+  transform:
+    translate3d(calc(var(--px) * var(--par-grid) * -1),
+                calc(var(--py) * var(--par-grid) * -1), 0)
+    perspective(900px) rotateX(calc(var(--py) * 1.4deg));
+  transform-origin: 50% 42%;
+  will-change: transform;
+}
+
+/* HERO — perspective viewport. .hero-inner tilt is driven by JS inline
+   transform (so it composes with the .reveal opacity entrance). Children
+   sit at staggered depths so the tilt parallaxes them as real 3D planes. */
+#hero { perspective: 1100px; perspective-origin: 50% 40%; }
+/* transition opacity ONLY: the engine rewrites .hero-inner's transform every
+   frame, so a transform-transition (inherited from .reveal) would compound
+   into lag. JS easing already smooths the motion. */
+.hero-inner {
+  transform-style: preserve-3d; will-change: transform;
+  transition: opacity 0.7s cubic-bezier(0.2,0.7,0.2,1);
+}
+.hero-inner .greeting  { transform: translateZ(18px); }
+.hero-inner h1         { transform: translateZ(55px); }
+.hero-inner .tagline   { transform: translateZ(34px); }
+.hero-inner .sub       { transform: translateZ(22px); }
+.hero-inner .hero-btns { transform: translateZ(46px); transform-style: preserve-3d; }
+
+/* SCROLL-DEPTH entrance — a richer .reveal variant the engine tags onto
+   headings & groups so they fly in from depth. Higher specificity than the
+   base .reveal rules, so it wins where applied. */
+section { perspective: 1200px; perspective-origin: 50% 50%; }
+.reveal.depth-in {
+  transform: translateY(26px) translateZ(-130px) rotateX(9deg);
+  transition: opacity 0.8s cubic-bezier(0.2,0.7,0.2,1),
+              transform 0.8s cubic-bezier(0.2,0.7,0.2,1);
+}
+.reveal.depth-in.in { transform: translateY(0) translateZ(0) rotateX(0); }
+
+/* CARD upgrade — cursor-tracking sheen + rim light.
+   --gx/--gy (0..100%) are set per-card by the existing tilt handler. */
+.tilt { position: relative; }
+.tilt::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: radial-gradient(180px 180px at var(--gx, 50%) var(--gy, 50%),
+    rgba(255,255,255,0.16), rgba(139,123,255,0.06) 40%, transparent 65%);
+  opacity: 0; transition: opacity 0.25s ease; pointer-events: none;
+  mix-blend-mode: screen; z-index: 1;
+}
+.tilt:hover::after { opacity: 1; }
+.tilt::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+  background: linear-gradient(calc(var(--gx, 50) * 1deg + 90deg),
+    rgba(94,231,176,0.45), transparent 40%, rgba(255,126,182,0.35));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity 0.25s ease; pointer-events: none; z-index: 0;
+}
+.tilt:hover::before { opacity: 1; }
+
+/* Inner content lifts toward the camera so tilt parallaxes it vs the face */
+.tilt-layer { transform: translateZ(30px); transform-style: preserve-3d; }
+.stat-card .tilt-layer {            /* preserve the original centered stack */
+  display: flex; flex-direction: column; align-items: center; gap: 0.35rem;
+}
+.stat-card > * { position: relative; z-index: 2; }
+.terminal-body, .terminal-header { position: relative; z-index: 2; }
+
+/* Click-burst overlay — above content, additive glow, never blocks clicks */
+#clickfx-canvas {
+  position: fixed; inset: 0; display: block;
+  pointer-events: none; z-index: 9998;
+  mix-blend-mode: screen;
+}
+#clickfx-combo {
+  position: fixed; left: 0; top: 0;
+  transform: translate3d(-50%, -140%, 0) scale(0.6);
+  pointer-events: none; z-index: 10000;
+  font-family: var(--mono); font-weight: 600; font-size: 13px; line-height: 1;
+  letter-spacing: 0.04em; padding: 5px 10px; border-radius: 999px;
+  color: #eaf6ff; background: rgba(12,12,22,0.55);
+  border: 1px solid rgba(139,123,255,0.45);
+  box-shadow: 0 0 18px rgba(139,123,255,0.45), inset 0 0 8px rgba(94,231,176,0.25);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  opacity: 0; white-space: nowrap; will-change: transform, opacity;
+}
+#clickfx-combo.show { animation: clickfx-pop 640ms cubic-bezier(.2,.9,.2,1) forwards; }
+@keyframes clickfx-pop {
+  0%   { opacity: 0; transform: translate3d(-50%,-120%,0) scale(0.5); }
+  18%  { opacity: 1; transform: translate3d(-50%,-150%,0) scale(1.14); }
+  40%  { transform: translate3d(-50%,-150%,0) scale(1.0); }
+  100% { opacity: 0; transform: translate3d(-50%,-210%,0) scale(0.95); }
+}
+
+/* Touch / coarse pointer: no cursor parallax or sheen. Taps still burst. */
+@media (hover: none), (pointer: coarse) {
+  .depth-canvas { display: none; }
+  #hero { perspective: none; }
+  .hero-inner, .hero-inner > * { transform: none !important; }
+  .aurora, .grid-overlay { transform: none !important; }
+  .tilt::after, .tilt::before { display: none; }
+}
+
+/* Reduced motion: flatten all 3D, hide canvases/sheen (engine also bails). */
+@media (prefers-reduced-motion: reduce) {
+  .depth-canvas, #clickfx-canvas, #clickfx-combo { display: none !important; }
+  #hero, section { perspective: none; }
+  .hero-inner, .hero-inner > *, .tilt-layer { transform: none !important; }
+  .aurora, .grid-overlay { transform: none !important; }
+  .tilt::after, .tilt::before { display: none; }
+  .reveal.depth-in, .reveal.depth-in.in { transform: none; }
+}
