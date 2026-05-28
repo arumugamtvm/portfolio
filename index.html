@@ -4,66 +4,84 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Arumugam G — Developer</title>
+  <meta name="description" content="Arumugam G — developer who ships fast, iterates faster, and builds relentlessly." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
+  <!-- Ambient layers -->
+  <div class="aurora" aria-hidden="true">
+    <span class="aurora-blob a1"></span>
+    <span class="aurora-blob a2"></span>
+    <span class="aurora-blob a3"></span>
+  </div>
+  <div class="grid-overlay" aria-hidden="true"></div>
+  <div class="cursor-glow" aria-hidden="true"></div>
+
+  <!-- Scroll progress -->
+  <div class="scroll-progress" aria-hidden="true"></div>
+
   <!-- NAV -->
   <nav>
-    <span class="logo">AG<span class="dot">.</span></span>
+    <a href="#hero" class="logo">AG<span class="dot">.</span></a>
     <ul>
       <li><a href="#about">About</a></li>
       <li><a href="#skills">Skills</a></li>
       <li><a href="#projects">Projects</a></li>
       <li><a href="#contact">Contact</a></li>
     </ul>
+    <a href="#contact" class="nav-cta">Let's talk</a>
   </nav>
 
   <!-- HERO -->
   <section id="hero">
-    <div class="hero-inner">
-      <p class="greeting">👋 Hello, world!</p>
-      <h1>I'm <span class="highlight">Arumugam G</span></h1>
+    <div class="hero-inner reveal">
+      <p class="greeting"><span class="wave">👋</span> Hello, world!</p>
+      <h1>I'm <span class="highlight" data-text="Arumugam G">Arumugam G</span></h1>
       <p class="tagline">Builder by day. Builder by night.<br>Occasionally sleeps.</p>
       <p class="sub">Welcome to my corner of the internet — crafted with ☕, curiosity, and an unhealthy obsession with shipping things.</p>
       <div class="hero-btns">
-        <a href="#projects" class="btn-primary">See My Chaos →</a>
-        <a href="#contact" class="btn-ghost">Hire the Chaos</a>
+        <a href="#projects" class="btn-primary magnetic">See My Chaos <span class="arrow">→</span></a>
+        <a href="#contact" class="btn-ghost magnetic">Hire the Chaos</a>
       </div>
     </div>
-    <div class="hero-badge">
+    <div class="hero-badge reveal">
       <span class="pulse"></span>
       Currently building something cool
     </div>
+    <a href="#about" class="scroll-hint" aria-label="Scroll down">
+      <span class="mouse"><span class="wheel"></span></span>
+    </a>
   </section>
 
   <!-- ABOUT -->
   <section id="about">
     <div class="section-inner">
-      <p class="section-label">// who dis</p>
-      <h2>About Me</h2>
+      <p class="section-label reveal">// who dis</p>
+      <h2 class="reveal">About Me</h2>
       <div class="about-grid">
-        <div class="about-text">
+        <div class="about-text reveal">
           <p>I'm a developer who turns caffeine and Stack Overflow tabs into working software.</p>
           <p>I ship fast, iterate faster, and document… eventually. My GitHub contributions graph looks like a city skyline — some towering skyscrapers, some suspiciously empty weekends.</p>
           <p>I don't just write code. I write code that <em>judges you silently</em> when you skip error handling.</p>
         </div>
-        <div class="about-cards">
-          <div class="stat-card">
-            <span class="stat-num">∞</span>
+        <div class="about-cards reveal">
+          <div class="stat-card tilt">
+            <span class="stat-num" data-count="∞">∞</span>
             <span class="stat-label">Projects in mind</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card tilt">
             <span class="stat-num">24/7</span>
             <span class="stat-label">Build mode active</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card tilt">
             <span class="stat-num">1</span>
             <span class="stat-label">Cup of coffee? lol no</span>
           </div>
-          <div class="stat-card">
+          <div class="stat-card tilt">
             <span class="stat-num">0</span>
             <span class="stat-label">Bugs (I ship features)</span>
           </div>
@@ -75,9 +93,9 @@
   <!-- SKILLS -->
   <section id="skills">
     <div class="section-inner">
-      <p class="section-label">// tech stack</p>
-      <h2>Skills</h2>
-      <div class="skills-notice">
+      <p class="section-label reveal">// tech stack</p>
+      <h2 class="reveal">Skills</h2>
+      <div class="skills-notice reveal">
         <div class="notice-icon">🤖</div>
         <div class="notice-text">
           <strong>Hang tight — this list is dangerously outdated.</strong>
@@ -85,7 +103,7 @@
           <p>I'm building a bot to auto-sync my skills here. The bot is also a side project. The bot has bugs. I'm fixing the bot. You see where this is going.</p>
         </div>
       </div>
-      <div class="skills-grid">
+      <div class="skills-grid reveal">
         <div class="skill-tag">JavaScript ⚡</div>
         <div class="skill-tag">TypeScript 🏗️</div>
         <div class="skill-tag">Python 🐍</div>
@@ -105,10 +123,10 @@
   <!-- PROJECTS -->
   <section id="projects">
     <div class="section-inner">
-      <p class="section-label">// side quests</p>
-      <h2>Projects</h2>
-      <div class="projects-notice">
-        <div class="terminal">
+      <p class="section-label reveal">// side quests</p>
+      <h2 class="reveal">Projects</h2>
+      <div class="projects-notice reveal">
+        <div class="terminal tilt">
           <div class="terminal-header">
             <span class="dot red"></span>
             <span class="dot yellow"></span>
@@ -133,7 +151,7 @@
         <p class="projects-cta">
           Seriously though — I build <strong>constantly</strong>. The pipeline to auto-display projects here is itself a project. Check my GitHub for the live feed of what I'm shipping.
         </p>
-        <a href="https://github.com/arumugamtvm" target="_blank" class="btn-primary">View on GitHub →</a>
+        <a href="https://github.com/arumugamtvm" target="_blank" rel="noopener" class="btn-primary magnetic">View on GitHub <span class="arrow">→</span></a>
       </div>
     </div>
   </section>
@@ -141,16 +159,16 @@
   <!-- CONTACT -->
   <section id="contact">
     <div class="section-inner contact-inner">
-      <p class="section-label">// let's talk</p>
-      <h2>Contact</h2>
-      <p class="contact-sub">Got an idea? A collab? A meme about bugs? I'm all ears.</p>
-      <p class="contact-sub"><em>(Response time: faster than my deploy pipelines, slower than my side-project ideas.)</em></p>
-      <div class="contact-links">
-        <a href="mailto:garumugamtvm@gmail.com" class="contact-card">
+      <p class="section-label reveal">// let's talk</p>
+      <h2 class="reveal">Contact</h2>
+      <p class="contact-sub reveal">Got an idea? A collab? A meme about bugs? I'm all ears.</p>
+      <p class="contact-sub reveal"><em>(Response time: faster than my deploy pipelines, slower than my side-project ideas.)</em></p>
+      <div class="contact-links reveal">
+        <a href="mailto:garumugamtvm@gmail.com" class="contact-card magnetic">
           <span class="contact-icon">📧</span>
           <span>garumugamtvm@gmail.com</span>
         </a>
-        <a href="https://github.com/arumugamtvm" target="_blank" class="contact-card">
+        <a href="https://github.com/arumugamtvm" target="_blank" rel="noopener" class="contact-card magnetic">
           <span class="contact-icon">🐙</span>
           <span>github/arumugamtvm</span>
         </a>
