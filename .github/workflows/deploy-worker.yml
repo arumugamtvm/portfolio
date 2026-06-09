@@ -1,0 +1,35 @@
+name: Deploy Copilot Worker
+
+# Deploys the Cloudflare Worker (Gemini proxy + Resend contact) only when files
+# under worker/ change. Kept separate from the Pages deploy so the two never
+# interfere (different permissions + concurrency group).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - '.github/workflows/deploy-worker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read          # never pushes to gh-pages → no contents:write needed
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy-worker:
+    name: Deploy Cloudflare Worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy with Wrangler
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy
+          # GEMINI_API_KEY / RESEND_API_KEY are NOT here — set once with
+          # `wrangler secret put` (they persist across deploys).

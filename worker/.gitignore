@@ -1,0 +1,8 @@
+# Real local secrets — NEVER commit. Only .dev.vars.example is tracked.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Wrangler local state
+.wrangler/
+node_modules/

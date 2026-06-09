@@ -1,0 +1,90 @@
+# ──────────────────────────────────────────────────────────────────────────
+#  Cloudflare Worker — Gemini proxy for the arumugamg.com site copilot
+#  Holds GEMINI_API_KEY as a SECRET (never in this file). Thin proxy:
+#  the agentic loop + tool execution stay client-side; this just adds the
+#  key, hardens the request, enforces budgets, and streams Gemini SSE back.
+#
+#  NEVER put the API key here. Set it with:
+#      cd worker && wrangler secret put GEMINI_API_KEY
+#  Secrets set with `wrangler secret put` PERSIST across `wrangler deploy`
+#  (a deploy never deletes them), so CI only needs CLOUDFLARE_API_TOKEN.
+# ──────────────────────────────────────────────────────────────────────────
+
+name = "arumugamg-copilot"
+main = "src/index.js"
+
+# Wrangler 4.x. Pin a recent compatibility date so the module-Worker +
+# Durable-Object-SQLite + ratelimit-binding runtime behaviour is stable.
+compatibility_date = "2026-01-01"
+
+# Workers Logs (free tier eligible). Lets you tail/inspect without extra cost.
+[observability]
+enabled = true
+head_sampling_rate = 1   # 1.0 = log every request; lower it if volume grows
+
+# ── Non-secret config (safe to commit) ─────────────────────────────────────
+# Tune budgets here without touching code. The Gemini key is NOT here.
+[vars]
+# 2.0-flash & 2.0-flash-lite were SHUT DOWN 2026-06-01 — do NOT list them.
+# 2.5-flash-lite has the highest free RPD; 2.5-flash is the higher-quality (tiny RPD) path.
+# CONFIRM the exact id via `GET /v1beta/models` once a working key is set —
+# don't gamble on "gemini-3.5-*".
+ALLOWED_MODELS    = "gemini-2.5-flash-lite,gemini-2.5-flash"
+DEFAULT_MODEL     = "gemini-2.5-flash-lite"
+# OpenRouter (OpenAI-compatible) — the active default backend. Key is a SECRET (OPENROUTER_API_KEY).
+OPENROUTER_MODELS = "google/gemma-4-31b-it:free"
+DEFAULT_OR_MODEL  = "google/gemma-4-31b-it:free"
+# NVIDIA NIM fallback (OpenAI-compatible). Key is a SECRET (NVIDIA_API_KEY). Note: no ":free" suffix.
+NVIDIA_MODEL      = "google/gemma-4-31b-it"
+MAX_OUTPUT_TOKENS = "512"    # hard server cap on generationConfig.maxOutputTokens
+MAX_BODY_BYTES    = "32768"  # 32 KB request-body ceiling
+MAX_MESSAGES      = "24"     # max turns the client may send
+MAX_MESSAGE_CHARS = "6000"   # max chars in any single message
+MAX_TOOLS         = "16"     # max tool declarations the client may send
+# DAILY_BUDGET MUST be < your live free RPD. Google stopped publishing free
+# numbers (Dec 2025 cut), so SET THIS from YOUR AI Studio dashboard (~80% of RPD).
+# 160 is a conservative default; raise once you confirm your real RPD.
+DAILY_BUDGET      = "160"    # global generateContent calls/day (counts every tool-hop)
+GLOBAL_RPM        = "8"      # global requests/min (keep < model RPM ~10-15; counts every hop)
+# Origins allowed to call /api/chat (comma-separated, exact origin match).
+# Plus http://localhost:* and http://127.0.0.1:* handled in code.
+ALLOWED_ORIGINS   = "https://arumugamg.com,https://www.arumugamg.com,https://arumugamtvm.github.io"
+# ── Contact form (Resend) — RESEND_API_KEY is a SECRET (wrangler secret put), not here ──
+CONTACT_TO        = "garumugamtvm@gmail.com"   # where contact messages are emailed
+CONTACT_FROM      = "onboarding@resend.dev"    # change to a verified domain sender once set up in Resend
+CONTACT_DAILY     = "40"   # global contact emails/day (keep < Resend free 100/day)
+CONTACT_RPM       = "3"    # global contact emails/min
+
+# ── Per-IP burst rate limiting (native binding, GA Sept 2025, FREE) ─────────
+# Token bucket per CF-Connecting-IP. NOTE: limits are enforced PER Cloudflare
+# location (not globally) — fine for per-IP abuse/DoS mitigation. The GLOBAL
+# daily budget is handled separately by the Durable Object below.
+# period MUST be 10 or 60 (seconds). Requires wrangler >= 4.36.0.
+[[ratelimits]]
+name = "CHAT_RL"
+namespace_id = "1001"   # any integer unique within your CF account
+
+  [ratelimits.simple]
+  limit = 12    # 12 chat requests
+  period = 60   # per 60s, per IP, per CF location
+
+# Per-IP burst limit for the contact form (stricter — emails are precious on a free key).
+[[ratelimits]]
+name = "CONTACT_RL"
+namespace_id = "1002"
+  [ratelimits.simple]
+  limit = 2     # 2 contact submissions
+  period = 60   # per 60s, per IP, per CF location
+
+# ── Global daily-budget counter (Durable Object + SQLite, FREE since Apr 2025)
+# A single named DO instance holds one atomic UTC-day counter. We use a DO
+# (not KV) because the KV free tier caps WRITES at ~1,000/day — a global
+# counter that writes on every request would exhaust that almost immediately.
+# DO SQLite storage is not billed on the Workers Free plan.
+[[durable_objects.bindings]]
+name = "BUDGET"
+class_name = "DailyBudget"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["DailyBudget"]

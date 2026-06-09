@@ -1,0 +1,20 @@
+{
+  "name": "arumugam-portfolio-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal Model Context Protocol server exposing portfolio profile data and live GitHub repos over stdio.",
+  "type": "module",
+  "bin": {
+    "arumugam-portfolio-mcp": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  }
+}

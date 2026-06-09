@@ -1,0 +1,34 @@
+# robots.txt — allow AI assistants and search crawlers (this portfolio is meant to be AI-discoverable)
+
+User-agent: *
+Allow: /
+
+# OpenAI
+User-agent: GPTBot
+Allow: /
+User-agent: OAI-SearchBot
+Allow: /
+User-agent: ChatGPT-User
+Allow: /
+
+# Anthropic
+User-agent: ClaudeBot
+Allow: /
+User-agent: Claude-SearchBot
+Allow: /
+User-agent: Claude-User
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+User-agent: Perplexity-User
+Allow: /
+
+# Google AI (Gemini/Vertex training); separate from Google Search indexing
+User-agent: Google-Extended
+Allow: /
+
+# AI agent guide (non-standard, informational): https://arumugamg.com/llms.txt
+
+Sitemap: https://arumugamg.com/sitemap.xml

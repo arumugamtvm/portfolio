@@ -1,2 +1,9 @@
 node_modules/
 dist/
+
+# Worker secrets / local state (primary ignore is worker/.gitignore)
+worker/.dev.vars
+worker/.dev.vars.*
+!worker/.dev.vars.example
+worker/node_modules/
+worker/.wrangler/

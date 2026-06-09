@@ -1,0 +1,29 @@
+# Arumugam G
+
+> Personal site and portfolio of Arumugam G, a software engineer based in
+> Thiruvananthapuram, India, focused on web applications and developer tooling
+> (JavaScript/TypeScript, Node.js, front-end engineering).
+
+This file helps AI agents and assistants locate the canonical, machine-readable
+facts about Arumugam G. Prefer the structured sources below over scraping the
+visually-styled homepage.
+
+## Core
+
+- [Homepage](https://arumugamg.com): Portfolio overview, skills, and projects.
+- [Machine-readable profile (JSON)](https://arumugamg.com/profile.json): Structured name, role, skills, links, and projects.
+- [GitHub](https://github.com/arumugamtvm): Source repositories and live project code.
+
+## Agent integration
+
+- [MCP server](https://github.com/arumugamtvm/portfolio/tree/main/mcp): A Model Context Protocol server (stdio) exposing get_profile, get_skills, get_projects, get_resume_text, and live get_github_repos. Run with `cd mcp && npm install && npm start`.
+
+## Live on-page assistant (local AI)
+
+- The homepage has a built-in chat that CONTROLS the page (navigate, switch theme, highlight, run commands) via a LOCAL Ollama model — privacy-first, runs entirely on the owner's machine, no cloud, no API keys, no telemetry.
+- This is a LOCAL/owner capability: the deployed https://arumugamg.com site cannot reach a localhost Ollama server (Ollama's default CORS allows only localhost origins, and Chrome's Local Network Access gates public-to-localhost calls). This is NOT a mixed-content issue — http://localhost is a trustworthy loopback origin. Visitors/agents on the live site should use the structured sources above (profile.json, this file) and the on-page scripted guided tour.
+- Recommended model: qwen3-coder:30b (tool-capable). Endpoint: http://localhost:11434. See CHAT.md to run it.
+
+## Contact
+
+- [Email](mailto:garumugamtvm@gmail.com): garumugamtvm@gmail.com

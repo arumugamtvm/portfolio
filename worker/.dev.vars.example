@@ -1,0 +1,18 @@
+# ──────────────────────────────────────────────────────────────────────────
+#  LOCAL secret template — copy to `.dev.vars` (which is gitignored) and fill in.
+#      cp .dev.vars.example .dev.vars
+#  `wrangler dev` auto-loads .dev.vars as env vars. NEVER commit the real file.
+#
+#  Production secrets are set separately and persist across deploys:
+#      wrangler secret put GEMINI_API_KEY
+#      wrangler secret put RESEND_API_KEY
+# ──────────────────────────────────────────────────────────────────────────
+
+# AI Studio API key (starts with "AIza..."). Used when provider = gemini.
+GEMINI_API_KEY="AIza-REPLACE-ME-LOCAL-ONLY"
+# OpenRouter API key (starts with "sk-or-"). Primary cloud backend.
+OPENROUTER_API_KEY="sk-or-REPLACE-ME-LOCAL-ONLY"
+# NVIDIA NIM API key (starts with "nvapi-"). Fallback when OpenRouter is busy/erroring.
+NVIDIA_API_KEY="nvapi-REPLACE-ME-LOCAL-ONLY"
+# Resend API key (starts with "re_"). Used to email the contact form to CONTACT_TO.
+RESEND_API_KEY="re_REPLACE-ME-LOCAL-ONLY"
