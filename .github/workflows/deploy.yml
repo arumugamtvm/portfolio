@@ -1,21 +1,33 @@
 name: Build & Deploy Portfolio
 
+# This repo's Pages is configured as build_type "workflow" (Deploy via GitHub
+# Actions), so we publish with the official Pages actions (configure-pages +
+# upload-pages-artifact + deploy-pages). The older gh-pages-branch push
+# (JamesIves) does NOT publish under this setting.
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'worker/**'                          # the Worker has its own deploy workflow
+      - '.github/workflows/deploy-worker.yml'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
-    name: Build (obfuscate & inline) and Deploy
+    name: Build (obfuscate & inline) and Deploy to Pages
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,9 +44,14 @@ jobs:
       - name: Build protected output
         run: npm run build
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          folder: dist
-          branch: gh-pages
-          clean: true
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
