@@ -1,0 +1,50 @@
+{
+  "$schema": "https://arumugamg.com/profile.schema.json",
+  "version": "1.0",
+  "type": "developer-profile",
+  "generatedAt": "2026-06-09",
+  "name": "Arumugam G",
+  "title": "Software Engineer",
+  "role": "Software Engineer",
+  "location": "Thiruvananthapuram, India",
+  "email": "garumugamtvm@gmail.com",
+  "website": "https://arumugamg.com",
+  "github": "https://github.com/arumugamtvm",
+  "summary": "Software engineer focused on building clean, performant web applications and developer tooling. Comfortable across the stack with an emphasis on JavaScript/TypeScript, Node.js, and front-end engineering.",
+  "contact": {
+    "email": "garumugamtvm@gmail.com",
+    "website": "https://arumugamg.com"
+  },
+  "skills": [
+    "JavaScript",
+    "TypeScript",
+    "C#",
+    "Dart",
+    "Node.js",
+    "React",
+    "HTML/CSS",
+    "Three.js / WebGL",
+    "Git",
+    "REST APIs",
+    "Model Context Protocol (MCP)"
+  ],
+  "links": [
+    { "label": "Website", "url": "https://arumugamg.com" },
+    { "label": "GitHub", "url": "https://github.com/arumugamtvm" }
+  ],
+  "projects": [
+    {
+      "name": "Portfolio (arumugamg.com)",
+      "description": "Personal portfolio site featuring a custom 3D 'Starfield OS' explore-depth engine with click-anywhere particle bursts.",
+      "url": "https://arumugamg.com",
+      "tech": ["JavaScript", "Three.js", "HTML", "CSS"]
+    },
+    {
+      "name": "Portfolio MCP Server",
+      "description": "A minimal Model Context Protocol server exposing profile, skills, projects, resume text, and live GitHub repos to AI agents over stdio.",
+      "url": "https://github.com/arumugamtvm",
+      "tech": ["Node.js", "@modelcontextprotocol/sdk", "zod"]
+    }
+  ],
+  "resume_text": "Arumugam G — Software Engineer (Thiruvananthapuram, India)\n\nSUMMARY\nSoftware engineer focused on building clean, performant web applications and developer tooling. Strong in JavaScript/TypeScript, Node.js, and front-end engineering.\n\nSKILLS\nJavaScript, TypeScript, C#, Dart, Node.js, React, HTML/CSS, Three.js/WebGL, Git, REST APIs, Model Context Protocol (MCP).\n\nPROJECTS\n- Portfolio (arumugamg.com): Personal portfolio with a custom 3D 'Starfield OS' explore-depth engine and click-anywhere particle bursts. Built with Three.js.\n- Portfolio MCP Server: Minimal MCP server exposing profile data and live GitHub repos to AI agents over stdio.\n\nCONTACT\nEmail: garumugamtvm@gmail.com | Web: https://arumugamg.com | GitHub: https://github.com/arumugamtvm"
+}
