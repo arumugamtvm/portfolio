@@ -48,4 +48,4 @@ The full AI-engineer track I'm working through. Notes live in my Notion and sync
 <tr><td>☁️ Phase 6</td><td>21–23</td><td>Cloud Deployment (GCP · AWS)</td></tr>
 </table>
 
-Every module below has its own page — use the sidebar (or the full curriculum list underneath) to move around exactly like in my Notion. Modules marked ◌ have their notes still in Notion; they publish here one by one as I work through them.
+Every module below has its own page with the complete notes — TL;DRs, mental models, code cheatsheets, interview Q&A, and checklists. Use the sidebar (or the full curriculum list underneath) to move around exactly like in my Notion. All 38 modules are published.
