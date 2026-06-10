@@ -1,0 +1,56 @@
+{
+  "phases": [
+    { "id": "p1", "title": "🌱 Phase 1 — Foundations (Weeks 0–3)", "modules": [
+      { "slug": "week0-ground-work", "title": "🌱 Week 0 — Ground Work" },
+      { "slug": "week1-travel-path", "title": "🗺️ Week 1 — Travel Path (AI Foundations)" },
+      { "slug": "week2-python", "title": "🐍 Week 2 — Python for AI & Data Science" },
+      { "slug": "week3-ml-regression", "title": "📈 Week 3 — Machine Learning: Regression" }
+    ]},
+    { "id": "p2", "title": "🤖 Phase 2 — Core ML & Data Science (Weeks 4–8)", "modules": [
+      { "slug": "week4-1-classification", "title": "🎯 Week 4.1 — ML: Classification" },
+      { "slug": "week4-2-clustering", "title": "🔵 Week 4.2 — ML: Clustering" },
+      { "slug": "week4-2-ml-practice", "title": "📝 Week 4.2 — ML Practice & Interview Prep" },
+      { "slug": "week5-univariate", "title": "📊 Week 5 — Univariate Analysis" },
+      { "slug": "week6-bivariate", "title": "🔗 Week 6 — Bivariate Analysis" },
+      { "slug": "week7-data-visualization", "title": "📊 Week 7 — Data Visualization" },
+      { "slug": "week8-1-feature-engineering", "title": "⚙️ Week 8.1 — Feature Engineering & Selection" },
+      { "slug": "week8-2-dimensionality-reduction", "title": "📉 Week 8.2 — Dimensionality Reduction" }
+    ]},
+    { "id": "p3", "title": "🌐 Phase 3 — Web Dev & Databases (Weeks 9–10)", "modules": [
+      { "slug": "week9-2-streamlit", "title": "🌐 Week 9.2 — Web Dev for AI: Streamlit" },
+      { "slug": "week9-3-fastapi-flask", "title": "🏗️ Week 9.3 — Web Dev for AI: FastAPI & Flask" },
+      { "slug": "week10-recommendation-systems", "title": "🎬 Week 10 — Recommendation Systems" },
+      { "slug": "week10-1-mysql", "title": "🗄️ Week 10.1 — MySQL for Data Science & AI" }
+    ]},
+    { "id": "p4", "title": "🧠 Phase 4 — Deep Learning & GenAI (Weeks 11–15)", "modules": [
+      { "slug": "week11-deep-learning", "title": "🧠 Week 11 — Deep Learning: ANN & CNN" },
+      { "slug": "week12-time-series", "title": "📈 Week 12 — Time Series Analysis" },
+      { "slug": "week13-nlp", "title": "💬 Week 13 — Natural Language Processing" },
+      { "slug": "week13-1-transformers", "title": "🧠 Week 13.1 — Advanced NLP (Transformers & BERT)" },
+      { "slug": "week14-chatgpt-api", "title": "💬 Week 14 — ChatGPT API & Advanced Techniques" },
+      { "slug": "week15-realtime-ai", "title": "⚡ Week 15 — Real-Time AI Apps" }
+    ]},
+    { "id": "p5", "title": "🚀 Phase 5 — Agentic AI (Weeks 16–20)", "modules": [
+      { "slug": "week16-rag", "title": "🔍 Week 16 — RAG, Embeddings & Vector Databases" },
+      { "slug": "week17-ai-agents", "title": "🤖 Week 17 — AI Agents" },
+      { "slug": "week18-langchain", "title": "⛓️ Week 18 — LangChain" },
+      { "slug": "week19-langgraph", "title": "🕸️ Week 19 — LangGraph" },
+      { "slug": "week19-1-agentic-app", "title": "🤖 Week 19.1 — Agentic AI Application" },
+      { "slug": "week20-mcp-server", "title": "🔌 Week 20 — MCP Server" }
+    ]},
+    { "id": "p6", "title": "☁️ Phase 6 — Cloud Deployment (Weeks 21–23)", "modules": [
+      { "slug": "week21-vertex-ai", "title": "☁️ Week 21 — Vertex AI Agent Platform" },
+      { "slug": "week22-gcp-deploy", "title": "🚀 Week 22 — Deployment on GCP" },
+      { "slug": "week23-aws-sagemaker", "title": "🌩️ Week 23 — AWS SageMaker AI" }
+    ]},
+    { "id": "career", "title": "🎯 Career Resources", "modules": [
+      { "slug": "communication-skills", "title": "🗣️ Communication Skills for AI Engineers" },
+      { "slug": "resume-interview-prep", "title": "📄 Resume & Interview Preparation" },
+      { "slug": "technical-interview-prep", "title": "💻 Technical Interview Preparation" },
+      { "slug": "question-bank", "title": "❓ AI/ML Question Bank" },
+      { "slug": "technical-concepts", "title": "📚 Technical Concepts — Master Reference" },
+      { "slug": "job-strategy", "title": "🎯 Get Goal — AI Engineer Job Strategy" },
+      { "slug": "linkedin-strategy", "title": "📱 LinkedIn Content Strategy" }
+    ]}
+  ]
+}

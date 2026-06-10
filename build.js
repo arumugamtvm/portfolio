@@ -205,6 +205,22 @@ ul{padding-left:1.3rem}.cardlist{list-style:none;padding:0}
 .cardlist a.title{font-size:1.15rem;font-weight:700;text-decoration:none}
 footer.site{margin-top:3.5rem;padding-top:1.2rem;border-top:1px solid var(--line);color:var(--soft);font-size:.88rem;display:flex;gap:1rem;flex-wrap:wrap}
 footer.site a{color:var(--soft)}
+.learn-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:2.2rem;align-items:start}
+.learn-nav{position:sticky;top:1rem;font-size:.88rem;max-height:calc(100vh - 2rem);overflow:auto;padding-right:.4rem}
+.learn-nav .top a{display:block;padding:.32rem .5rem;border-radius:.45rem;color:var(--ink);text-decoration:none;font-weight:600}
+.learn-nav .top a:hover{background:var(--card)}
+.learn-nav details{margin:.35rem 0;border-left:2px solid var(--line);padding-left:.4rem}
+.learn-nav summary{cursor:pointer;color:var(--soft);font-weight:700;padding:.25rem .3rem;list-style:none}
+.learn-nav summary::-webkit-details-marker{display:none}
+.learn-nav summary::before{content:'▸ ';color:var(--violet)}
+.learn-nav details[open] summary::before{content:'▾ '}
+.learn-nav details a{display:block;padding:.22rem .5rem;border-radius:.4rem;color:var(--soft);text-decoration:none;line-height:1.35}
+.learn-nav details a:hover{color:var(--violet);background:var(--card)}
+.learn-nav a.on{color:var(--violet);font-weight:700;background:var(--card)}
+.pn{display:flex;justify-content:space-between;gap:1rem;margin-top:2.5rem;border-top:1px solid var(--line);padding-top:1.1rem;font-size:.92rem}
+.pn a{text-decoration:none;max-width:46%}
+.stub-note{background:var(--card);border:1px dashed var(--line);border-radius:.8rem;padding:1.1rem 1.3rem;color:var(--soft);margin:1.6rem 0}
+@media(max-width:900px){.learn-layout{grid-template-columns:1fr}.learn-nav{position:static;max-height:none;border:1px solid var(--line);border-radius:.7rem;padding:.7rem}}
 `.trim();
 
 function pageShell({ title, desc, nav, bodyHtml, extraHead = '', route = '' }) {
@@ -269,17 +285,77 @@ if (fs.existsSync(blogDir)) {
     bodyHtml: `<h1>Blog</h1>\n<p class="meta">Long-form technical writing. Maintained in Notion, published here.</p>\n<ul class="cardlist">${list}</ul>` }));
 }
 
-/* ── learn + track: md pages map 1:1 onto routes ── */
-for (const [src, route, navKey] of [
-  ['learn/index.md', 'learn', 'learn'],
-  ['learn/dsa-patterns.md', 'learn/dsa-patterns', 'learn'],
-  ['track/index.md', 'track', 'track'],
-]) {
-  const file = path.join(CONTENT, src);
-  if (!fs.existsSync(file)) continue;
-  const { meta, body } = parseFrontmatter(fs.readFileSync(file, 'utf8'));
-  writePage(route, pageShell({ title: meta.title || route, desc: meta.description, nav: navKey, route,
-    bodyHtml: `<h1>${inline(meta.title || route)}</h1>\n` + mdToHtml(body) }));
+/* ── learn: Notion-style navigation over the full module manifest ── */
+const manifest = JSON.parse(fs.readFileSync(path.join(CONTENT, 'learn', 'modules.json'), 'utf8'));
+const allModules = manifest.phases.flatMap((p) => p.modules.map((m) => ({ ...m, phase: p.title, phaseId: p.id })));
+const moduleFile = (slug) => path.join(CONTENT, 'learn', 'modules', slug + '.md');
+
+function learnNav(currentSlug) {
+  const top = [
+    ['/learn/', 'learn-home', '🏠 Learning Hub'],
+    ['/learn/dsa-patterns/', 'dsa-patterns', '🔢 DSA Patterns Guide'],
+    ['/track/', 'track', '📊 Progress Tracker'],
+    ['/blog/', 'blog', '📝 Blog'],
+  ].map(([href, key, label]) => `<a href="${href}"${currentSlug === key ? ' class="on"' : ''}>${label}</a>`).join('');
+  const groups = manifest.phases.map((p) => {
+    const isOpen = p.modules.some((m) => m.slug === currentSlug) || currentSlug === 'learn-home';
+    const items = p.modules.map((m) =>
+      `<a href="/learn/${m.slug}/"${m.slug === currentSlug ? ' class="on"' : ''}>${esc(m.title)}${fs.existsSync(moduleFile(m.slug)) ? '' : ' ◌'}</a>`).join('');
+    return `<details${isOpen ? ' open' : ''}><summary>${esc(p.title)}</summary>${items}</details>`;
+  }).join('');
+  return `<nav class="learn-nav" aria-label="Learning hub navigation"><div class="top">${top}</div>${groups}</nav>`;
+}
+function learnShell({ title, desc, route, currentSlug, mainHtml }) {
+  return pageShell({ title, desc, nav: 'learn', route,
+    bodyHtml: `<div class="learn-layout">${learnNav(currentSlug)}<div class="learn-main">${mainHtml}</div></div>` });
+}
+
+/* learn index — intro from md + generated linked phase lists */
+{
+  const { meta, body } = parseFrontmatter(fs.readFileSync(path.join(CONTENT, 'learn', 'index.md'), 'utf8'));
+  const phaseLists = manifest.phases.map((p) => {
+    const items = p.modules.map((m) => {
+      const synced = fs.existsSync(moduleFile(m.slug));
+      return `<li><a${synced ? '' : ' class="meta"'} href="/learn/${m.slug}/">${esc(m.title)}</a>${synced ? '' : ' <span class="meta">· notes sync on demand</span>'}</li>`;
+    }).join('');
+    return `<h3>${esc(p.title)}</h3><ul>${items}</ul>`;
+  }).join('\n');
+  writePage('learn', learnShell({ title: meta.title || 'Learning Hub', desc: meta.description, route: 'learn', currentSlug: 'learn-home',
+    mainHtml: `<h1>${inline(meta.title || 'Learning Hub')}</h1>\n` + mdToHtml(body) + `<h2 id="curriculum">📚 Full Curriculum — every module</h2>\n` + phaseLists }));
+}
+
+/* dsa-patterns page inside the learn shell */
+{
+  const { meta, body } = parseFrontmatter(fs.readFileSync(path.join(CONTENT, 'learn', 'dsa-patterns.md'), 'utf8'));
+  writePage('learn/dsa-patterns', learnShell({ title: meta.title, desc: meta.description, route: 'learn/dsa-patterns', currentSlug: 'dsa-patterns',
+    mainHtml: `<h1>${inline(meta.title)}</h1>\n` + mdToHtml(body) }));
+}
+
+/* one page per module — full notes when synced, honest stub otherwise */
+let syncedCount = 0;
+allModules.forEach((m, i) => {
+  const prev = allModules[i - 1], next = allModules[i + 1];
+  const pn = `<div class="pn">${prev ? `<a href="/learn/${prev.slug}/">← ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a href="/learn/${next.slug}/" style="text-align:right">${esc(next.title)} →</a>` : '<span></span>'}</div>`;
+  let mainHtml, desc;
+  if (fs.existsSync(moduleFile(m.slug))) {
+    syncedCount++;
+    const { meta, body } = parseFrontmatter(fs.readFileSync(moduleFile(m.slug), 'utf8'));
+    desc = meta.description || m.title;
+    mainHtml = `<h1>${inline(meta.title || m.title)}</h1>\n<p class="meta">${esc(m.phase)} · Hope AI — ML &amp; DS Course</p>\n` + mdToHtml(body) + pn;
+  } else {
+    desc = m.title + ' — Hope AI course module (notes sync from Notion on demand).';
+    mainHtml = `<h1>${esc(m.title)}</h1>\n<p class="meta">${esc(m.phase)} · Hope AI — ML &amp; DS Course</p>
+<div class="stub-note">📓 The full notes for this module live in my Notion workspace and haven't been synced to the site yet — modules are published here one by one as I work through them. The complete curriculum map is always up to date in the sidebar.</div>
+<p>Meanwhile: the <a href="/learn/week17-ai-agents/">AI Agents notes</a> and the <a href="/learn/dsa-patterns/">DSA Patterns guide</a> are fully published, and the <a href="/track/">progress tracker</a> shows where I am right now.</p>` + pn;
+  }
+  writePage('learn/' + m.slug, learnShell({ title: m.title.replace(/^[^\w]*\s*/, ''), desc, route: 'learn/' + m.slug, currentSlug: m.slug, mainHtml }));
+});
+
+/* track page (own route, plain shell) */
+{
+  const { meta, body } = parseFrontmatter(fs.readFileSync(path.join(CONTENT, 'track', 'index.md'), 'utf8'));
+  writePage('track', pageShell({ title: meta.title, desc: meta.description, nav: 'track', route: 'track',
+    bodyHtml: `<h1>${inline(meta.title)}</h1>\n` + mdToHtml(body) }));
 }
 
 /* ── wallet: the owner's SECRETS VAULT (keys & passwords).
@@ -400,7 +476,7 @@ const WALLET_BODY = `
 writePage('wallet', pageShell({ title: 'Wallet', desc: 'Private vault (owner only).', nav: '', route: 'wallet', bodyHtml: WALLET_BODY,
   extraHead: '<meta name="robots" content="noindex">' }));
 
-console.log('  Pages: blog (' + posts.length + ' post' + (posts.length === 1 ? '' : 's') + '), learn, learn/dsa-patterns, track, wallet');
+console.log('  Pages: blog (' + posts.length + ' post' + (posts.length === 1 ? '' : 's') + '), learn (' + allModules.length + ' modules, ' + syncedCount + ' synced), dsa-patterns, track, wallet');
 
 console.log('Build complete → dist/index.html');
 console.log('  CSS: ' + (css.length / 1024).toFixed(1) + ' KB → ' + (minCss.length / 1024).toFixed(1) + ' KB');
