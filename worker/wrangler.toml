@@ -51,7 +51,7 @@ GLOBAL_RPM        = "8"      # global requests/min (keep < model RPM ~10-15; cou
 ALLOWED_ORIGINS   = "https://arumugamg.com,https://www.arumugamg.com,https://arumugamtvm.github.io"
 # ── Contact form (Resend) — RESEND_API_KEY is a SECRET (wrangler secret put), not here ──
 CONTACT_TO        = "garumugamtvm@gmail.com"   # where contact messages are emailed
-CONTACT_FROM      = "onboarding@resend.dev"    # change to a verified domain sender once set up in Resend
+CONTACT_FROM      = "hello@arumugamg.com"      # verified domain sender (arumugamg.com verified in Resend)
 CONTACT_DAILY     = "40"   # global contact emails/day (keep < Resend free 100/day)
 CONTACT_RPM       = "3"    # global contact emails/min
 
