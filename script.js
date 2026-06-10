@@ -1012,12 +1012,18 @@ NOTE
   const egg = (m) => (window.__egg || (() => {}))(m);
   const sectionTop = (id) => id === 'hero' ? 0 : (((document.getElementById(id) || {}).offsetTop) || 0) - 10;
   let _scrollRAF = 0;
+  function jumpScroll(toY) {
+    // force a real instant jump: plain scrollTo(0,y) obeys CSS scroll-behavior
+    // smooth, whose animation is paused in hidden tabs (would silently no-op)
+    try { window.scrollTo({ top: toY, behavior: 'instant' }); }
+    catch (e) { window.scrollTo(0, toY); }
+  }
   function tweenScroll(toY) {
     toY = clamp(toY, 0, document.body.scrollHeight - innerHeight);
     // hidden tabs pause rAF — jump instantly so agent actions still land
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) { window.scrollTo(0, toY); return; }
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) { jumpScroll(toY); return; }
     const fromY = window.scrollY, dist = toY - fromY;
-    if (Math.abs(dist) < 2) { window.scrollTo(0, toY); return; }
+    if (Math.abs(dist) < 2) { jumpScroll(toY); return; }
     const dur = Math.min(720, 240 + Math.abs(dist) * 0.22), t0 = performance.now();
     if (_scrollRAF) cancelAnimationFrame(_scrollRAF);
     const prev = root.style.scrollBehavior; root.style.scrollBehavior = 'auto';
