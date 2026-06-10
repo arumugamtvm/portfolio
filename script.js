@@ -1014,7 +1014,8 @@ NOTE
   let _scrollRAF = 0;
   function tweenScroll(toY) {
     toY = clamp(toY, 0, document.body.scrollHeight - innerHeight);
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { window.scrollTo(0, toY); return; }
+    // hidden tabs pause rAF — jump instantly so agent actions still land
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || document.hidden) { window.scrollTo(0, toY); return; }
     const fromY = window.scrollY, dist = toY - fromY;
     if (Math.abs(dist) < 2) { window.scrollTo(0, toY); return; }
     const dur = Math.min(720, 240 + Math.abs(dist) * 0.22), t0 = performance.now();
@@ -1033,6 +1034,80 @@ NOTE
     tweenScroll(window.scrollY + r.top - (innerHeight - Math.min(r.height, innerHeight)) / 2);
   }
 
+  /* ──────────── guide cursor — a visible pointer the copilot moves like a hand.
+     It glides toward its target every frame (so it keeps tracking while the page
+     scrolls), pulses a ring on "click", and fades out after a moment of rest. ── */
+  const CURSOR = (() => {
+    let el = null, labelEl = null, raf = 0, hideTimer = 0;
+    let cx = 0, cy = 0, getPoint = null, settle = 0, onArrive = null;
+    const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+    function ensure() {
+      if (el) return;
+      el = document.createElement('div');
+      el.className = 'agent-cursor';
+      el.setAttribute('aria-hidden', 'true');
+      el.innerHTML = '<span class="agent-cursor-ring"></span>' +
+        '<svg class="agent-cursor-arrow" viewBox="0 0 24 24"><path d="M4.5 2.8 20 12l-7.1 1.5L9 20.6z"/></svg>' +
+        '<span class="agent-cursor-label">copilot</span>';
+      document.body.appendChild(el);
+      labelEl = el.querySelector('.agent-cursor-label');
+      cx = innerWidth - 96; cy = innerHeight - 110;
+      place();
+    }
+    function place() { el.style.transform = 'translate3d(' + cx.toFixed(1) + 'px,' + cy.toFixed(1) + 'px,0)'; }
+    function arrive(t) {
+      cx = t.x; cy = t.y; place();
+      getPoint = null; const cb = onArrive; onArrive = null; cb && cb();
+    }
+    function step() {
+      raf = 0;
+      if (!getPoint) return;
+      const t = getPoint();
+      if (document.hidden) { arrive(t); return; } // rAF pauses in hidden tabs — snap, don't stall
+      const dx = t.x - cx, dy = t.y - cy;
+      cx += dx * 0.16; cy += dy * 0.16;
+      place();
+      settle = (Math.abs(dx) < 2 && Math.abs(dy) < 2) ? settle + 1 : 0;
+      if (settle >= 4) arrive(t);
+      else raf = requestAnimationFrame(step);
+    }
+    function show(label) {
+      ensure();
+      if (label) labelEl.textContent = label;
+      el.classList.add('show');
+      clearTimeout(hideTimer);
+    }
+    function rest() { clearTimeout(hideTimer); hideTimer = setTimeout(() => { if (el) el.classList.remove('show'); }, 2600); }
+    function pulse() { if (!el) return; el.classList.remove('click'); void el.offsetWidth; el.classList.add('click'); }
+    /* point at an element (keeps tracking it while the page scrolls), then run opts.then */
+    function pointAt(target, opts) {
+      opts = opts || {};
+      const node = typeof target === 'string' ? document.querySelector(target) : target;
+      if (!node) { opts.then && opts.then(); return; }
+      ensure();
+      const aim = () => {
+        const r = node.getBoundingClientRect();
+        return { x: clamp(r.left + r.width * (opts.ax != null ? opts.ax : 0.5), 12, innerWidth - 34),
+                 y: clamp(r.top + r.height * (opts.ay != null ? opts.ay : 0.55), 12, innerHeight - 34) };
+      };
+      if (reduced() || document.hidden) {
+        const p = aim(); cx = p.x; cy = p.y; place();
+        show(opts.label); if (opts.click) pulse(); opts.then && opts.then(); rest();
+        return;
+      }
+      show(opts.label);
+      getPoint = aim; settle = 0;
+      let fired = false;
+      const fire = () => { if (fired) return; fired = true; clearTimeout(watchdog); if (opts.click) pulse(); opts.then && opts.then(); rest(); };
+      // Watchdog: if a frame never comes (tab hidden mid-flight, throttling),
+      // finish anyway so tool calls awaiting the cursor can never hang.
+      const watchdog = setTimeout(() => { const p = aim(); cx = p.x; cy = p.y; place(); getPoint = null; onArrive = null; fire(); }, 2500);
+      onArrive = fire;
+      if (!raf) raf = requestAnimationFrame(step);
+    }
+    return { pointAt, pulse, rest };
+  })();
+
   /* ──────────── window.AGENT — DOM-driven control surface ──────────── */
   const AGENT = {
     listSections() {
@@ -1048,8 +1123,10 @@ NOTE
         theme: root.getAttribute('data-theme') || 'cream', sections: this.listSections().map((s) => s.id) };
     },
     goToSection(id) {
-      if (!document.getElementById(id)) return { ok: false, error: 'unknown section: ' + id };
+      const sec = document.getElementById(id);
+      if (!sec) return { ok: false, error: 'unknown section: ' + id };
       tweenScroll(sectionTop(id));
+      CURSOR.pointAt(sec.querySelector('h1, h2, .sec-head') || sec, { label: 'here', ay: 0.35 });
       return { ok: true, scrolledTo: id };
     },
     scrollBy(px) { tweenScroll(window.scrollY + (Number(px) || 0)); return { ok: true }; },
@@ -1061,7 +1138,7 @@ NOTE
       const hit = cands.find((el) => (el.textContent || '').toLowerCase().includes(t));
       if (!hit) return { ok: false, error: 'no clickable element matches: ' + text };
       centerTween(hit);
-      hit.click();
+      CURSOR.pointAt(hit, { label: 'clicking', click: true, then: () => hit.click() });
       return { ok: true, clicked: (hit.textContent || '').trim().slice(0, 60) };
     },
     selectText(text) {
@@ -1085,6 +1162,7 @@ NOTE
       const el = document.getElementById(target) || document.querySelector(target);
       if (!el) return { ok: false, error: 'nothing to highlight: ' + target };
       centerTween(el);
+      CURSOR.pointAt(el, { label: 'look here', ay: 0.3 });
       el.style.transition = 'outline-color .3s, box-shadow .3s';
       el.style.outline = '2px solid var(--violet)';
       el.style.boxShadow = '0 0 0 6px color-mix(in oklab, var(--violet) 22%, transparent)';
@@ -1098,14 +1176,18 @@ NOTE
       try { localStorage.setItem('ws-theme', next); } catch (e) {}
       window.dispatchEvent(new CustomEvent('ws-theme', { detail: next }));
       egg('theme → ' + next);
+      CURSOR.pointAt(document.querySelector('[data-toggle-theme]'), { label: 'theme → ' + next, click: true });
       return { ok: true, theme: next };
     },
     runCommand(name) {
       const n = String(name || '').toLowerCase().trim();
       const self = this;
       const map = {
-        copy_email:      () => { const b = document.querySelector('[data-copy]'); b ? b.click() : egg('email copied ✶'); },
-        download_resume: () => { const b = document.querySelector('[data-resume]'); if (b) b.click(); },
+        copy_email:      () => { const b = document.querySelector('[data-copy]');
+          if (!b) { egg('email copied ✶'); return; }
+          centerTween(b); CURSOR.pointAt(b, { label: 'copying email', click: true, then: () => b.click() }); },
+        download_resume: () => { const b = document.querySelector('[data-resume]');
+          if (b) { centerTween(b); CURSOR.pointAt(b, { label: 'resume', click: true, then: () => b.click() }); } },
         open_github:     () => window.open('https://github.com/arumugamtvm', '_blank', 'noopener'),
         confetti:        () => (window.__confetti || (() => {}))(),
         cycle_theme:     () => self.switchTheme(),
@@ -1116,6 +1198,53 @@ NOTE
       if (!fn) return { ok: false, error: 'unknown command: ' + name };
       fn();
       return { ok: true, ran: n };
+    },
+    /* Pre-fill the contact form for the user (drafted message, optional name/email).
+       Deliberately never submits — the user reviews and presses Send themselves. */
+    async fillContact(fields) {
+      fields = fields || {};
+      const form = document.querySelector('[data-contact-form]');
+      if (!form) return { ok: false, error: 'contact form not found' };
+      tweenScroll(sectionTop('contact'));
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const typeInto = (input, val) => new Promise((res) => {
+        CURSOR.pointAt(input, { label: 'writing for you', click: true, then: () => {
+          input.focus();
+          const max = input.maxLength > 0 ? input.maxLength : 2000;
+          const s = String(val).trim().slice(0, max);
+          const finish = () => { input.value = s; input.dispatchEvent(new Event('input', { bubbles: true })); res(); };
+          if (reduced || document.hidden) { finish(); return; }
+          input.value = '';
+          let i = 0;
+          const t0 = Date.now();
+          const chunk = Math.max(1, Math.round(s.length / 50)), stepMs = Math.max(8, Math.min(26, 1100 / s.length));
+          const t = setInterval(() => {
+            // never let the typewriter stall the agent (hidden tabs clamp timers)
+            if (document.hidden || Date.now() - t0 > 3000) { clearInterval(t); finish(); return; }
+            i += chunk;
+            input.value = s.slice(0, i);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            if (i >= s.length) { clearInterval(t); res(); }
+          }, stepMs);
+        } });
+      });
+      const plan = [
+        ['name', form.querySelector('[data-cf-name]'), fields.name],
+        ['email', form.querySelector('[data-cf-email]'), fields.email],
+        ['message', form.querySelector('[data-cf-message]'), fields.message],
+      ];
+      const filled = [];
+      for (const [key, input, val] of plan) {
+        if (!input || typeof val !== 'string' || !val.trim()) continue;
+        await typeInto(input, val);
+        filled.push(key);
+      }
+      const empty = plan.find(([k, input]) => input && !input.value.trim());
+      const next = empty ? empty[1] : form.querySelector('[data-cf-send]');
+      if (next) CURSOR.pointAt(next, { label: empty ? 'your turn — fill this' : 'press Send when ready', then: () => { if (empty) next.focus(); } });
+      return { ok: true, filled, userMustSend: true,
+        note: filled.length ? 'Draft is in the form. The user must review it and press Send — you cannot send it.'
+                            : 'Form opened; nothing was pre-filled.' };
     },
   };
   window.AGENT = AGENT;
@@ -1361,8 +1490,10 @@ NOTE
       parameters:{ type:'object', properties:{ command:{ type:'string', enum:['copy_email','download_resume','open_github','confetti','cycle_theme','scroll_top','open_palette'] } }, required:['command'] } } },
     { type:'function', function:{ name:'get_state', description:'Read the current section, scroll position, and theme.', parameters:{ type:'object', properties:{} } } },
     { type:'function', function:{ name:'list_sections', description:'List the sections available on the page.', parameters:{ type:'object', properties:{} } } },
-    { type:'function', function:{ name:'present_options', description:'Show the user clickable choice buttons when they should pick one option (e.g. a theme: cream, midnight, mono; or a page). Use this instead of asking them to type the choice.',
+    { type:'function', function:{ name:'present_options', description:'Show the user clickable choice buttons when they should pick one option (e.g. a theme: cream, midnight, mono; or a page). Use this instead of asking them to type the choice. This must be your ONLY tool call that turn — show the buttons, then wait for their tap.',
       parameters:{ type:'object', properties:{ question:{ type:'string', description:'Short question shown above the buttons (optional).' }, options:{ type:'array', items:{ type:'string' }, description:'The choices; each becomes a clickable button.' } }, required:['options'] } } },
+    { type:'function', function:{ name:'fill_contact_form', description:'Open the contact form and pre-fill it for the user. Use when they want to write, send, or draft an email/message to Arumugam: write a short, polite message from what they said and pass it as "message". Include their name/email only if they told you. The form is NOT sent — the user reviews the draft and presses Send themselves.',
+      parameters:{ type:'object', properties:{ name:{ type:'string', description:'sender name, only if the user gave it' }, email:{ type:'string', description:'sender email, only if the user gave it' }, message:{ type:'string', description:'the drafted message, plain friendly English' } }, required:['message'] } } },
   ];
   function dispatchTool(name, args) {
     const A = window.AGENT;
@@ -1377,6 +1508,7 @@ NOTE
         case 'get_state':     return A.getState();
         case 'list_sections': return { ok: true, sections: A.listSections() };
         case 'present_options': return renderChoices(args.question, args.options);
+        case 'fill_contact_form': return A.fillContact({ name: args.name, email: args.email, message: args.message });
         default:              return { ok: false, error: 'unknown tool: ' + name };
       }
     } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
@@ -1389,6 +1521,7 @@ NOTE
       case 'click_text':    return { cls: 'ok', text: 'clicked “' + r.clicked + '”' };
       case 'highlight':     return { cls: 'ok', text: 'highlighted ' + r.highlighted };
       case 'run_command':   return { cls: 'ok', text: 'ran: ' + r.ran };
+      case 'fill_contact_form': return { cls: 'ok', text: (r.filled && r.filled.length) ? 'drafted it in the form — review & press Send' : 'opened the contact form' };
       default:              return null;
     }
   }
@@ -1411,10 +1544,12 @@ NOTE
       'Every turn, do two things: (1) reply in the chat, and (2) when the person wants to move, see, or change something on the page, call exactly one tool to do it.',
       '',
       'Pages on this site: hero, about, skills, work, path, contact. Themes: cream, midnight, mono.',
-      'If they say "projects" or "portfolio", that is the "work" page — use go_to_section with id "work". "experience" or "journey" means "path". "contact", "hire", or "email" means "contact".',
+      'If they say "projects" or "portfolio", that is the "work" page — use go_to_section with id "work". "experience" or "journey" means "path". "contact" or "hire" means "contact".',
       'Call a tool when they ask to go somewhere, scroll, change theme, highlight a part, copy the email, get the resume, or open GitHub. Otherwise just reply with words. Use one tool, then say what you did in one short, friendly sentence.',
       'Only the listed tools exist — never make up a tool name.',
-      'When the user should pick from a few options (like a theme — cream, midnight, mono — or a page), call present_options with those choices so they can tap a button instead of typing.',
+      'A small pointer moves on the page when you act — it shows the person where to look. So prefer doing the thing over describing it.',
+      'If they want to write, send, or draft an email or message to ' + p.name + ': call fill_contact_form. Write a short, polite message from what they told you and pass it as "message" (add their name/email only if they gave them). Then tell them to check the draft and press Send. You can never send it yourself.',
+      'Ask OR act — never both in one turn. When the user should pick from a few options (like a theme or a page), call present_options ALONE and stop; wait for their tap. Never ask "which would you prefer?" in plain text, and never act before they answer.',
       'You may use light Markdown in replies: **bold**, bullet lists with -, and [links](https://...). Keep replies short.',
       '',
       'Write in clear, simple English. Be warm, short, and professional — 1 to 3 short sentences. No headings, no heavy jargon. Speak as the site ("I can show you..."), not as ' + p.name + '.',
@@ -1440,14 +1575,22 @@ NOTE
       const turn = await modelChat(messages, useTools ? AGENT_TOOLS : null, { onToken, signal });
       messages.push({ role: 'assistant', content: turn.content, ...(turn.tool_calls.length ? { tool_calls: turn.tool_calls } : {}) });
       if (!turn.tool_calls.length) return { final: turn.content, messages };
-      for (const call of turn.tool_calls) {
+      // Ask OR act, never both: if the model shows choice buttons, that ends the
+      // turn — any other tool calls bundled with it are dropped, and we wait for
+      // the user's tap instead of letting the model act on an unanswered question.
+      const optCall = turn.tool_calls.find((c) => c.function.name === 'present_options');
+      const calls = optCall ? [optCall] : turn.tool_calls;
+      for (const call of calls) {
         const fnName = call.function.name;
         const args = call.function.arguments || {};
         onStatus && onStatus('running ' + fnName + '…');
-        const result = dispatchTool(fnName, args);
+        let result;
+        try { result = await Promise.resolve(dispatchTool(fnName, args)); }
+        catch (e) { result = { ok: false, error: String((e && e.message) || e) }; }
         onTool && onTool(fnName, args, result);
         messages.push({ role: 'tool', tool_name: fnName, tool_call_id: call.id, content: JSON.stringify(result) });
       }
+      if (optCall) return { final: turn.content, messages };
     }
     return { final: 'I tried a few steps but couldn’t finish — try rephrasing?', messages };
   }
@@ -1484,6 +1627,7 @@ NOTE
           '<button class="agent-chip" data-agent-suggest>What can you build?</button>' +
           '<button class="agent-chip" data-agent-suggest>Switch to midnight theme</button>' +
           '<button class="agent-chip" data-agent-suggest>How do I reach you?</button>' +
+          '<button class="agent-chip" data-agent-suggest>Write a message for me</button>' +
         '</div>' +
       '</div>' +
     '</div>' +
@@ -1633,6 +1777,10 @@ NOTE
     const liveText = [];
     ctrl = new AbortController();
     setBusy(true);
+    // Free-tier model queues can stall for minutes — don't show "thinking" forever.
+    let timedOut = false;
+    const slowTimer = setTimeout(() => { timedOut = true; try { ctrl.abort(); } catch (e) {} }, 75000);
+    const slowNote = setTimeout(() => { setStatus(online ? 'online' : 'offline', 'the free model is waking up — give it a few more seconds…'); }, 9000);
     const thinkingEl = addThinking();
     let bubble = null;
     const strip = makeThinkStripper();
@@ -1643,26 +1791,37 @@ NOTE
       bubble.textContent += vis; liveText.push(vis); autoscroll();
     };
     try {
+      let toolRan = false, sawOptions = false;
       const r = await agenticChat(text, history.slice(-8), {
         onToken,
         onStatus: (m) => setStatus(online ? 'online' : 'offline', m),
-        onTool: (n, a, res) => { if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove(); addToolChip(n, a, res); },
+        onTool: (n, a, res) => {
+          if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+          toolRan = true; if (n === 'present_options') sawOptions = true;
+          addToolChip(n, a, res);
+        },
         signal: ctrl.signal, useTools: online,
       });
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      const finalText = (liveText.join('') || strip(r.final || '') || r.final || '').trim();
-      if (!bubble) bubble = addBubble('assistant', finalText, true);
-      else bubble.innerHTML = mdToHtml(finalText);
-      bubble.removeAttribute('aria-busy');
+      // Never leave an empty bubble: if the model returned no words, say
+      // something sensible — unless choice buttons are already on screen.
+      const finalText = (liveText.join('') || strip(r.final || '') || r.final || '').trim()
+        || (sawOptions ? '' : toolRan ? 'Done — anything else you’d like to see?' : 'Hmm, I didn’t get a reply that time. Please try again.');
+      if (!bubble && finalText) bubble = addBubble('assistant', finalText, true);
+      else if (bubble) bubble.innerHTML = mdToHtml(finalText);
+      if (bubble) bubble.removeAttribute('aria-busy');
       $('[data-agent-live]').textContent = finalText.slice(0, 220);
       history.push({ role: 'user', content: text });
-      history.push({ role: 'assistant', content: (r.final || finalText) });
+      history.push({ role: 'assistant', content: (r.final || finalText || '(showed choice buttons)') });
       setStatus(online ? 'online' : 'offline', '');
     } catch (e) {
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      if (e && e.name === 'AbortError') { if (bubble) bubble.removeAttribute('aria-busy'); }
+      if (e && e.name === 'AbortError') {
+        if (bubble) bubble.removeAttribute('aria-busy');
+        if (timedOut) addError('rate_limited_slow'); // watchdog fired: tell them instead of spinning forever
+      }
       else { addError(e && e.workerCode); }
-    } finally { setBusy(false); ctrl = null; }
+    } finally { clearTimeout(slowTimer); clearTimeout(slowNote); setBusy(false); ctrl = null; }
   }
 
   function addError(workerCode) {

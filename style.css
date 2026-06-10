@@ -1126,3 +1126,36 @@ html[data-motion="off"] .agent-panel { transition: opacity .12s; }
 .agent-choices.chosen { opacity: .5; pointer-events: none; }
 .agent-choices-select { width: auto; min-width: 150px; }
 @media (prefers-reduced-motion: reduce) { .agent-choices { animation: none; } }
+
+/* ── copilot guide cursor — the pointer the assistant moves like a hand ── */
+.agent-cursor {
+  position: fixed; left: 0; top: 0; z-index: 9800; pointer-events: none;
+  opacity: 0; transition: opacity .35s ease; will-change: transform;
+}
+.agent-cursor.show { opacity: 1; }
+.agent-cursor-arrow {
+  width: 22px; height: 22px; display: block;
+  fill: var(--violet); stroke: var(--paper); stroke-width: 1.4; stroke-linejoin: round;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .35));
+}
+.agent-cursor-label {
+  position: absolute; left: 18px; top: 21px; white-space: nowrap;
+  font: 600 11px/1 var(--mono); letter-spacing: .02em;
+  color: var(--paper); background: var(--violet);
+  padding: .38em .65em; border-radius: 999px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .22);
+}
+.agent-cursor-ring {
+  position: absolute; left: -9px; top: -9px; width: 40px; height: 40px;
+  border: 2px solid var(--violet); border-radius: 50%;
+  opacity: 0; transform: scale(.35);
+}
+.agent-cursor.click .agent-cursor-ring { animation: agent-cursor-ping .55s ease-out; }
+@keyframes agent-cursor-ping {
+  0%   { opacity: .85; transform: scale(.35); }
+  100% { opacity: 0;   transform: scale(1.25); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agent-cursor { transition: none; }
+  .agent-cursor.click .agent-cursor-ring { animation: none; }
+}
