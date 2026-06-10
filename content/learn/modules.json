@@ -51,6 +51,58 @@
       { "slug": "technical-concepts", "title": "📚 Technical Concepts — Master Reference" },
       { "slug": "job-strategy", "title": "🎯 Get Goal — AI Engineer Job Strategy" },
       { "slug": "linkedin-strategy", "title": "📱 LinkedIn Content Strategy" }
+    ]},
+    { "id": "journey", "title": "🚀 AI Engineer Journey — Plan & Trackers", "modules": [
+      { "slug": "session-constitution", "title": "📜 Session Constitution — 13 Rules" },
+      { "slug": "roadmap-overview", "title": "🗓️ 6-Month Roadmap Overview" },
+      { "slug": "month-1-foundation", "title": "📅 Month 1 — Foundation (Wk 1–4)" },
+      { "slug": "month-2-real-applications", "title": "📅 Month 2 — Real Applications (Wk 5–8)" },
+      { "slug": "month-3-agentic-dsa", "title": "📅 Month 3 — Agentic AI + DSA (Wk 9–12)" },
+      { "slug": "month-4-advanced-portfolio", "title": "📅 Month 4 — Advanced AI + Portfolio (Wk 13–16)" },
+      { "slug": "month-5-interview-prep", "title": "📅 Month 5 — Full Interview Prep (Wk 17–20)" },
+      { "slug": "month-6-land-the-job", "title": "📅 Month 6 — Land the Job (Wk 21–24)" },
+      { "slug": "communication-track", "title": "💬 Communication Track — Full Curriculum" },
+      { "slug": "system-design-bank", "title": "🏗️ System Design Bank" },
+      { "slug": "projects-portfolio", "title": "📦 Projects Portfolio" },
+      { "slug": "target-companies", "title": "🎯 Target Companies — Prep Guide" },
+      { "slug": "tools-resources", "title": "🔧 Tools & Resources" },
+      { "slug": "tamil-communication", "title": "🇮🇳 Tamil Communication Skills" },
+      { "slug": "ai-generalist-roadmap", "title": "⚡ AI Generalist Master Roadmap 2026" }
+    ]},
+    { "id": "vanakkam", "title": "📚 Vanakkam DSA Course (24 sections)", "modules": [
+      { "slug": "vanakkam-dsa-hub", "title": "📚 Vanakkam DSA Learning Hub" },
+      { "slug": "vanakkam-s01-introduction", "title": "S1 — Introduction" },
+      { "slug": "vanakkam-s02-warm-up", "title": "S2 — Warm Up" },
+      { "slug": "vanakkam-s03-complexity", "title": "S3 — Time/Space Complexity" },
+      { "slug": "vanakkam-s04-arrays", "title": "S4 — Arrays (Easy/Medium)" },
+      { "slug": "vanakkam-s05-recursion", "title": "S5 — Recursion" },
+      { "slug": "vanakkam-s06-searching-sorting", "title": "S6 — Searching & Sorting" },
+      { "slug": "vanakkam-s07-linked-list", "title": "S7 — Linked List" },
+      { "slug": "vanakkam-s08-strings", "title": "S8 — Strings" },
+      { "slug": "vanakkam-s09-stacks-queues", "title": "S9 — Stacks & Queues" },
+      { "slug": "vanakkam-s10-binary-search", "title": "S10 — Binary Search" },
+      { "slug": "vanakkam-s11-two-pointers-sliding-window", "title": "S11 — Two Pointers & Sliding Window" },
+      { "slug": "vanakkam-s12-binary-tree", "title": "S12 — Binary Tree" },
+      { "slug": "vanakkam-s13-bst", "title": "S13 — Binary Search Tree" },
+      { "slug": "vanakkam-s14-heap", "title": "S14 — Heap / Priority Queue" },
+      { "slug": "vanakkam-s15-hashing", "title": "S15 — Hashing" },
+      { "slug": "vanakkam-s16-backtracking", "title": "S16 — Backtracking" },
+      { "slug": "vanakkam-s17-greedy", "title": "S17 — Greedy Algorithm" },
+      { "slug": "vanakkam-s18-dynamic-programming", "title": "S18 — Dynamic Programming" },
+      { "slug": "vanakkam-s19-graphs", "title": "S19 — Graphs" },
+      { "slug": "vanakkam-s20-tries", "title": "S20 — Tries" },
+      { "slug": "vanakkam-s21-searching-sorting-advanced", "title": "S21 — Searching & Sorting (Advanced)" },
+      { "slug": "vanakkam-s22-dp-arrays-advanced", "title": "S22 — DP & Arrays (Advanced)" },
+      { "slug": "vanakkam-s23-strings-advanced", "title": "S23 — Strings (Advanced)" },
+      { "slug": "vanakkam-s24-bonus", "title": "S24 — Bonus" }
+    ]},
+    { "id": "dsa-more", "title": "🔢 DSA Trackers & Hubs", "modules": [
+      { "slug": "dsa-problem-tracker", "title": "✅ DSA Problem Tracker — Optimal Solutions" },
+      { "slug": "namaste-dsa-hub", "title": "🎯 Namaste DSA Hub" }
+    ]},
+    { "id": "playbooks", "title": "💼 Playbooks & Studios", "modules": [
+      { "slug": "monetization-playbook", "title": "💰 Monetization Playbook (Tamil + English)" },
+      { "slug": "content-video-studio", "title": "🎬 Content Manager — Video Studio" }
     ]}
   ]
 }
