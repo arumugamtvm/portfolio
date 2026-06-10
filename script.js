@@ -88,7 +88,9 @@
   /* ── Nav: scrolled state + scroll progress + active link ────── */
   const nav = document.querySelector('nav');
   const prog = document.querySelector('.scroll-progress');
-  const links = [...document.querySelectorAll('nav ul a')];
+  // Only #hash links are scrollspy anchors — the nav also has real page
+  // links (/blog/, /learn/) which are NOT valid CSS selectors.
+  const links = [...document.querySelectorAll('nav ul a')].filter((a) => (a.getAttribute('href') || '').startsWith('#'));
   const sections = links.map((a) => document.querySelector(a.getAttribute('href'))).filter(Boolean);
   function onScroll() {
     const y = scrollY;
