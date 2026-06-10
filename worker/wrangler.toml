@@ -40,8 +40,10 @@ NVIDIA_MODEL_FAST = "meta/llama-3.1-8b-instruct"  # last racing rung: small, ~0.
 # Ollama Cloud (OpenAI-compatible, key is a SECRET: OLLAMA_API_KEY) — PRIMARY racer (~0.7s first token).
 OLLAMA_CLOUD_MODEL = "gemma4:31b-cloud"
 # Racing ladder timing: stage 2 launches after HEDGE_MS without a first token,
-# stage 3 at +5s, stage 4 at +10s; PATIENCE_MS is the overall first-token cap.
-HEDGE_MS          = "6000"
+# later stages every +5s; PATIENCE_MS is the overall first-token cap. The
+# ladder is health-aware: the last winner runs at t=0, cooled-down providers
+# are demoted to the back (OpenRouter free = 50 req/day → cools until UTC midnight).
+HEDGE_MS          = "4000"
 PATIENCE_MS       = "65000"
 MAX_OUTPUT_TOKENS = "512"    # hard server cap on generationConfig.maxOutputTokens
 MAX_BODY_BYTES    = "32768"  # 32 KB request-body ceiling

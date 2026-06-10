@@ -184,6 +184,39 @@ function startSSEProvider(url, headers, bodyStr, firstDataMs, parentSignal) {
   return { promise, abort };
 }
 
+/* ── provider health memory (isolate-local, zero-latency) ───────────────────
+ * Remembers recent failures so a known-dead provider never gets the head
+ * start again (e.g. OpenRouter free tier 429s for the REST OF THE DAY once
+ * its 50-requests cap is hit — hedging on it would waste seconds every chat).
+ * The most recent winner is promoted to the t=0 slot, so during an outage the
+ * provider that actually answers becomes the instant primary automatically.
+ * Isolate-local on purpose: no storage round-trips; resets on deploy/eviction
+ * (worst case = one slow rediscovery request per isolate). */
+const HEALTH = new Map(); // name → { cooldownUntil, reason }
+let LAST_WINNER = null;
+function msUntilUtcMidnight() {
+  const d = new Date();
+  return Math.min(12 * 3600e3, Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1) - d.getTime());
+}
+function noteFail(name, res) {
+  const detail = String(res.detail || "");
+  const ms = res.kind === "http" && (res.status === 401 || res.status === 403) ? 3600e3 // key refused — long
+    : res.kind === "http" && res.status === 429 ? (/per.?day|daily/i.test(detail) ? msUntilUtcMidnight() : 600e3)
+    : res.kind === "stall" ? 120e3  // queue jam — retry in a couple of minutes
+    : 30e3;                          // transient network blip
+  HEALTH.set(name, { cooldownUntil: Date.now() + ms, reason: res.kind + (res.status ? ":" + res.status : "") });
+}
+function isCooling(name) { const h = HEALTH.get(name); return !!h && h.cooldownUntil > Date.now(); }
+function noteWin(name) { HEALTH.delete(name); LAST_WINNER = name; }
+function healthSnapshot() {
+  const out = {};
+  for (const [name, h] of HEALTH) {
+    const left = h.cooldownUntil - Date.now();
+    if (left > 0) out[name] = { coolingForSecs: Math.round(left / 1000), reason: h.reason };
+  }
+  return { lastWinner: LAST_WINNER, cooling: out };
+}
+
 /* ── request validation ──────────────────────────────────────────────────
  * Expected client body (Gemini-native shape, kept thin):
  *   {
@@ -360,7 +393,7 @@ export default {
     // Gemini provider would show "offline" on every page load.
     if (request.method === "GET" && url.pathname === "/") {
       return new Response(
-        JSON.stringify({ ok: true, service: "arumugamg-copilot" }),
+        JSON.stringify({ ok: true, service: "arumugamg-copilot", providers: healthSnapshot() }),
         {
           status: 200,
           headers: {
@@ -593,24 +626,26 @@ export default {
       // staggered times; the first stream to produce a real SSE `data:` token
       // wins and every other in-flight request is aborted. If everything
       // launched so far has hard-failed, the next stage launches immediately.
-      //   t=0         Ollama Cloud gemma (primary: ~0.7s first token, no queue)
-      //   t=hedge     OpenRouter gemma  (free 50/day, separate quota)
-      //   t=hedge+5s  NVIDIA gemma      (separate quota, queue can stall)
-      //   t=hedge+10s NVIDIA llama-8b   (small + near-instant — bounded worst case)
+      // Canonical priority (re-ranked each request by health memory — last
+      // winner first, cooling providers last; slot times 0, hedge, +5s, +5s):
+      //   1. Ollama Cloud gemma (~0.7s first token, no queue)
+      //   2. OpenRouter gemma   (free 50/day, separate quota)
+      //   3. NVIDIA gemma       (separate quota, queue can stall)
+      //   4. NVIDIA llama-8b    (small + near-instant — bounded worst case)
       const hedgeMs = Math.max(1000, parseInt(env.HEDGE_MS || "6000", 10));
       const patienceMs = Math.max(hedgeMs * 3, parseInt(env.PATIENCE_MS || "65000", 10));
       const nvHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${env.NVIDIA_API_KEY}` };
       // thinking OFF → straight to the answer (faster, doesn't burn the token cap on reasoning).
       const nvBody = (model) => JSON.stringify({ ...sanitized.upstream, model, chat_template_kwargs: { enable_thinking: false } });
-      const stages = [];
+      const stages = []; // canonical priority order; launch times assigned after health ranking
       if (env.OLLAMA_API_KEY) {
-        stages.push({ name: "ollama_cloud", at: 0, go: () => startSSEProvider("https://ollama.com/v1/chat/completions", {
+        stages.push({ name: "ollama_cloud", go: () => startSSEProvider("https://ollama.com/v1/chat/completions", {
           "Content-Type": "application/json",
           Authorization: `Bearer ${env.OLLAMA_API_KEY}`,
         }, JSON.stringify({ ...sanitized.upstream, model: cfg.ollamaModel }), patienceMs, request.signal) });
       }
       if (env.OPENROUTER_API_KEY) {
-        stages.push({ name: "openrouter", at: stages.length ? hedgeMs : 0, go: () => startSSEProvider("https://openrouter.ai/api/v1/chat/completions", {
+        stages.push({ name: "openrouter", go: () => startSSEProvider("https://openrouter.ai/api/v1/chat/completions", {
           "Content-Type": "application/json",
           Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, // secret never reaches the client
           "HTTP-Referer": "https://arumugamg.com",
@@ -618,14 +653,21 @@ export default {
         }, JSON.stringify(sanitized.upstream), patienceMs, request.signal) });
       }
       if (env.NVIDIA_API_KEY) {
-        stages.push({ name: "nvidia", at: hedgeMs + 5000, go: () => startSSEProvider(
+        stages.push({ name: "nvidia", go: () => startSSEProvider(
           "https://integrate.api.nvidia.com/v1/chat/completions", nvHeaders, nvBody(cfg.nvidiaModel), patienceMs, request.signal) });
         if (cfg.nvidiaFast && cfg.nvidiaFast !== cfg.nvidiaModel) {
-          stages.push({ name: "nvidia_fast", at: hedgeMs + 10000, go: () => startSSEProvider(
+          stages.push({ name: "nvidia_fast", go: () => startSSEProvider(
             "https://integrate.api.nvidia.com/v1/chat/completions", nvHeaders, nvBody(cfg.nvidiaFast), patienceMs, request.signal) });
         }
       }
       if (!stages.length) return jsonError(500, "misconfigured", "Server missing chat API keys.", origin, allowed);
+
+      // Health-aware ordering: the latest proven winner gets the t=0 slot;
+      // providers in failure cooldown are demoted to the back of the ladder
+      // (still launched last, so a wrong memory can never lose availability).
+      const rank = (s) => (isCooling(s.name) ? 2 : s.name === LAST_WINNER ? 0 : 1);
+      stages.sort((a, b) => rank(a) - rank(b)); // stable → canonical order kept within each rank
+      stages.forEach((s, i) => { s.at = i === 0 ? 0 : hedgeMs + (i - 1) * 5000; });
 
       const racers = [], fails = {};
       let winner = null, resolveWin;
@@ -636,6 +678,7 @@ export default {
         req.promise.then((res) => {
           if (res.kind === "ok") resolveWin({ ...res, name: s.name, req });
           else {
+            noteFail(s.name, res); // remember: skip its head start while it cools down
             fails[s.name] = { kind: res.kind, status: res.status };
             if (Object.keys(fails).length === stages.length) resolveWin(null); // everyone lost
           }
@@ -659,6 +702,7 @@ export default {
         return jsonError(st, code, "The assistant is unavailable right now. Please try again shortly.", origin, allowed, { providers: fails });
       }
       for (const { req } of racers) if (req !== winner.req) req.abort(); // drop the losers
+      noteWin(winner.name); // promote: next request starts here at t=0
       upstreamResp = { ok: true, body: winner.stream };
     } else {
       const key = env.GEMINI_API_KEY;
