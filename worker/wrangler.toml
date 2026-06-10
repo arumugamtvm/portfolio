@@ -94,6 +94,15 @@ namespace_id = "1002"
 name = "BUDGET"
 class_name = "DailyBudget"
 
+# Owner's private wallet (transactions in DO SQLite; WALLET_KEY secret guards it)
+[[durable_objects.bindings]]
+name = "WALLET"
+class_name = "Wallet"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["DailyBudget"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Wallet"]

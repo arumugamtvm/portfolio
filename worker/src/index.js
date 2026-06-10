@@ -95,8 +95,8 @@ function isAllowedOrigin(origin, cfg) {
 function corsHeaders(origin, allowed) {
   const h = {
     Vary: "Origin",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, x-wallet-key",
     "Access-Control-Max-Age": "86400",
   };
   // Only echo the Origin back when it is allowlisted. Never use "*" here so a
@@ -490,6 +490,49 @@ export default {
     }
 
     // Everything below is the chat endpoint.
+    // ── Wallet: owner-only money tracker. Data lives in a Durable Object;
+    //    every request must present the WALLET_KEY secret. Nothing public. ──
+    if (url.pathname === "/api/wallet") {
+      if (!allowed)
+        return jsonError(403, "origin_forbidden", "Origin not allowed.", origin, false);
+      if (!env.WALLET_KEY || !env.WALLET)
+        return jsonError(500, "misconfigured", "Wallet is not configured.", origin, allowed);
+      const given = request.headers.get("x-wallet-key") || "";
+      // constant-time compare via digests — never leak key length/prefix timing
+      const dig = async (s) => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)));
+      const [a, b] = await Promise.all([dig(given), dig(env.WALLET_KEY)]);
+      let diff = 0;
+      for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+      if (diff !== 0)
+        return jsonError(401, "unauthorized", "Wrong wallet key.", origin, allowed);
+      const wip = request.headers.get("CF-Connecting-IP") || "unknown";
+      if (env.CHAT_RL) {
+        const { success } = await env.CHAT_RL.limit({ key: `wallet:${wip}` });
+        if (!success)
+          return jsonError(429, "rate_limited", "Too fast — wait a moment.", origin, allowed, { retryable: true });
+      }
+      const stub = env.WALLET.get(env.WALLET.idFromName("owner-wallet"));
+      let fwdBody = null;
+      if (request.method === "POST") {
+        try {
+          const raw = await request.arrayBuffer();
+          if (raw.byteLength > 4096) return jsonError(413, "payload_too_large", "Too large.", origin, allowed);
+          fwdBody = new TextDecoder().decode(raw);
+          JSON.parse(fwdBody); // must be valid JSON
+        } catch { return jsonError(400, "bad_json", "Invalid JSON.", origin, allowed); }
+      }
+      const resp = await stub.fetch("https://do/wallet" + url.search, {
+        method: request.method,
+        headers: { "Content-Type": "application/json" },
+        ...(fwdBody ? { body: fwdBody } : {}),
+      });
+      const data = await resp.text();
+      return new Response(data, {
+        status: resp.status,
+        headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...corsHeaders(origin, allowed) },
+      });
+    }
+
     if (url.pathname !== "/api/chat") {
       return jsonError(404, "not_found", "Not found.", origin, allowed);
     }
@@ -856,5 +899,54 @@ export class DailyBudget {
       day: dayCount + 1,
       minute: minuteCount + 1,
     });
+  }
+}
+
+/* ── Durable Object: the owner's private secrets vault ──────────────────────
+ * One named instance ("owner-wallet") stores the owner's secrets (API keys,
+ * passwords) in SQLite. Values arrive ALREADY ENCRYPTED client-side
+ * (AES-GCM; key derived from the master passphrase that never reaches this
+ * server — auth uses a one-way hash of it). This object only ever sees
+ * ciphertext. The Worker layer has verified WALLET_KEY before forwarding. */
+export class Wallet {
+  constructor(state) {
+    this.sql = state.storage.sql;
+    this.sql.exec(
+      `CREATE TABLE IF NOT EXISTS vault (
+         id TEXT PRIMARY KEY,
+         ts INTEGER NOT NULL,
+         name TEXT NOT NULL,
+         username TEXT NOT NULL DEFAULT '',
+         ct TEXT NOT NULL
+       )`,
+    );
+  }
+
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (request.method === "GET") {
+      const items = this.sql.exec("SELECT * FROM vault ORDER BY ts DESC LIMIT 500").toArray();
+      return Response.json({ ok: true, count: items.length, items });
+    }
+    if (request.method === "POST") {
+      let b;
+      try { b = await request.json(); } catch { return Response.json({ error: { code: "bad_json", message: "Invalid JSON." } }, { status: 400 }); }
+      const name = String(b.name || "").trim().slice(0, 60);
+      const username = String(b.username || "").trim().slice(0, 120);
+      const ct = String(b.ct || "");
+      if (!name) return Response.json({ error: { code: "invalid", message: "Name is required." } }, { status: 400 });
+      if (!ct || ct.length > 8192 || !/^[A-Za-z0-9+/=]+$/.test(ct))
+        return Response.json({ error: { code: "invalid", message: "Bad ciphertext." } }, { status: 400 });
+      const id = crypto.randomUUID();
+      this.sql.exec("INSERT INTO vault (id, ts, name, username, ct) VALUES (?, ?, ?, ?, ?)",
+        id, Date.now(), name, username, ct);
+      return Response.json({ ok: true, id });
+    }
+    if (request.method === "DELETE") {
+      const id = url.searchParams.get("id") || "";
+      this.sql.exec("DELETE FROM vault WHERE id = ?", id);
+      return Response.json({ ok: true });
+    }
+    return Response.json({ error: { code: "method_not_allowed", message: "Use GET, POST or DELETE." } }, { status: 405 });
   }
 }
