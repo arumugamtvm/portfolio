@@ -1471,7 +1471,8 @@ NOTE
   }
   async function probe() {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 2500);
+    // generous: slow mobile networks legitimately take >2.5s to first byte
+    const timer = setTimeout(() => ctrl.abort(), 7000);
     try {
       if (CFG.provider !== 'ollama') {
         const res = await fetch(workerBase() + '/', { signal: ctrl.signal, headers: { Accept: 'application/json' } });
@@ -1843,9 +1844,12 @@ NOTE
           toolRan = true; if (n === 'present_options') sawOptions = true;
           addToolChip(n, a, res);
         },
-        signal: ctrl.signal, useTools: online,
+        // Cloud providers: always send full capability — the offline probe can
+        // be wrong (slow network, transient block) and the POST is the real test.
+        signal: ctrl.signal, useTools: online || CFG.provider !== 'ollama',
       });
       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+      if (!online) { online = true; setStatus('online'); } // the POST succeeded — probe was wrong
       // Never leave an empty bubble: if the model returned no words, say
       // something sensible — unless choice buttons are already on screen.
       const finalText = (liveText.join('') || strip(r.final || '') || r.final || '').trim()
@@ -1873,7 +1877,8 @@ NOTE
     const msg = (wc === 'gemini_forbidden' || wc === 'openrouter_forbidden') ? '⚠ The model key was refused. You can switch the assistant in settings.'
       : wc === 'daily_budget_exhausted' ? '⚠ The assistant has reached today’s usage limit. Please try again tomorrow, or switch the assistant in settings.'
       : /rate_limited/.test(wc) ? '⚠ The assistant is busy right now. Please try again in a moment.'
-      : isGemini ? '⚠ I could not reach the assistant backend.' : '⚠ I could not reach the local model.';
+      : CFG.provider === 'ollama' ? '⚠ I could not reach the local model.'
+      : '⚠ I can’t reach the assistant service from this network. Some mobile networks block it — Wi-Fi or another network usually works. You can always use the contact form below instead.';
     const d = document.createElement('div');
     d.className = 'agent-error'; d.setAttribute('role', 'alert');
     d.innerHTML = '<span></span>' +
@@ -1918,11 +1923,25 @@ NOTE
     ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px';
   }
 
+  let offlineNoticeShown = false, reprobeTimer = 0;
+  function scheduleReprobe() {
+    // Quietly keep checking while offline — slow or flaky networks (mobile
+    // especially) often come back; flip to online without user action.
+    clearTimeout(reprobeTimer);
+    if (online || !chatOpen) return;
+    reprobeTimer = setTimeout(async () => {
+      if (online || !chatOpen) return;
+      const p = await probe();
+      if (p.ok) { online = true; offlineNoticeShown = false; setStatus('online'); }
+      else scheduleReprobe();
+    }, 30000);
+  }
   async function refreshConnection() {
     setStatus('checking');
     const p = await probe();
     online = p.ok;
     setStatus(online ? 'online' : 'offline');
+    if (online) offlineNoticeShown = false; else scheduleReprobe();
     $('[data-agent-input]').disabled = false;
     if (CFG.provider === 'ollama') {
       if (online) {
@@ -1945,14 +1964,16 @@ NOTE
           setStatus('online');
           updateModelNote(models);
         } catch (e) {}
-      } else {
+      } else if (!offlineNoticeShown) {
+        offlineNoticeShown = true; // never stack duplicate notices on re-probes
         clearWelcome();
         addBubble('assistant', offlineMessage());
         renderScriptedFallback();
       }
-    } else { // gemini (via Worker)
+    } else { // cloud providers (via Worker)
       if (online) setStatus('online');
-      else {
+      else if (!offlineNoticeShown) {
+        offlineNoticeShown = true;
         clearWelcome();
         addBubble('assistant', offlineWorkerMessage());
         renderScriptedFallback();
@@ -1976,9 +1997,9 @@ NOTE
     } catch (e) {}
   }
   function offlineWorkerMessage() {
-    return 'This assistant runs on an online model through a small backend that keeps the API key private. ' +
-      'The backend is not reachable right now. You can switch the assistant in settings (the gear icon), ' +
-      'or use the quick links below:';
+    return 'I can’t reach my assistant service right now — some networks (often mobile data) block it, ' +
+      'and it usually works on Wi-Fi or another network. I’ll keep retrying quietly. ' +
+      'Meanwhile the quick links below work fully, and you can always email Arumugam directly — the address is in the Contact section:';
   }
 
   function build() {
