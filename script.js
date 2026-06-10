@@ -1247,10 +1247,14 @@ NOTE
       }
       const empty = plan.find(([k, input]) => input && !input.value.trim());
       const next = empty ? empty[1] : form.querySelector('[data-cf-send]');
-      if (next) CURSOR.pointAt(next, { label: empty ? 'your turn — fill this' : 'press Send when ready', then: () => { if (empty) next.focus(); } });
+      if (next) CURSOR.pointAt(next, { label: empty ? 'your turn — fill this' : 'ready to send', then: () => { if (empty) next.focus(); } });
+      // Complete draft → ask for one-tap confirmation in the chat. The send
+      // still goes through the real form button; nothing fires without the tap.
+      if (!empty && filled.length) { try { renderContactConfirm(form); } catch (e) {} }
       return { ok: true, filled, userMustSend: true,
-        note: filled.length ? 'Draft is in the form. The user must review it and press Send — you cannot send it.'
-                            : 'Form opened; nothing was pre-filled.' };
+        note: !empty && filled.length ? 'Draft is complete. The chat is showing the user a “Send it” confirmation button — tell them to tap it (or edit first). You cannot send it yourself.'
+          : filled.length ? 'Draft is in the form but some fields are still empty (' + (empty ? empty[0] : '') + '). Ask the user to complete them and press Send.'
+          : 'Form opened; nothing was pre-filled.' };
     },
   };
   window.AGENT = AGENT;
@@ -1554,7 +1558,7 @@ NOTE
       'Call a tool when they ask to go somewhere, scroll, change theme, highlight a part, copy the email, get the resume, or open GitHub. Otherwise just reply with words. Use one tool, then say what you did in one short, friendly sentence.',
       'Only the listed tools exist — never make up a tool name.',
       'A small pointer moves on the page when you act — it shows the person where to look. So prefer doing the thing over describing it.',
-      'If they want to write, send, or draft an email or message to ' + p.name + ': call fill_contact_form. Write a short, polite message from what they told you and pass it as "message" (add their name/email only if they gave them). Then tell them to check the draft and press Send. You can never send it yourself.',
+      'If they want to write, send, or draft an email or message to ' + p.name + ': call fill_contact_form. Write a short, polite message from what they told you and pass it as "message" (add their name/email only if they gave them). If the tool says the draft is complete, a "Send it" button is already on screen — just tell them to check the draft and tap it. If fields are missing, ask for them. You can never send it yourself.',
       'Ask OR act — never both in one turn. When the user should pick from a few options (like a theme or a page), call present_options ALONE and stop; wait for their tap. Never ask "which would you prefer?" in plain text, and never act before they answer.',
       'You may use light Markdown in replies: **bold**, bullet lists with -, and [links](https://...). Keep replies short.',
       '',
@@ -1698,6 +1702,39 @@ NOTE
     }
     wrap.appendChild(row); $('[data-agent-log]').appendChild(wrap); autoscroll();
     return { ok:true, presented: options };
+  }
+
+  /* one-tap confirmation after the copilot drafts the contact form; the send
+     still goes through the real form button — nothing fires without the tap */
+  function renderContactConfirm(form) {
+    if (!panel) return;
+    const wrap = document.createElement('div'); wrap.className = 'agent-choices';
+    const q = document.createElement('p'); q.className = 'agent-choices-q'; q.textContent = 'Draft is ready — send it?';
+    const row = document.createElement('div'); row.className = 'agent-choices-row';
+    const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'agent-chip'; b.textContent = label;
+      b.addEventListener('click', () => { if (wrap.dataset.done) return; wrap.dataset.done = '1'; wrap.classList.add('chosen'); fn(); }); row.appendChild(b); };
+    mk('✓ Send it', () => {
+      addBubble('user', 'Send it');
+      const btn = form.querySelector('[data-cf-send]');
+      CURSOR.pointAt(btn, { label: 'sending', click: true, then: () => btn.click() });
+      // mirror the form's own status note into the chat once it lands
+      const note = form.querySelector('[data-cf-note]');
+      const before = (note && note.textContent || '').trim();
+      let tries = 0;
+      const poll = setInterval(() => {
+        tries++;
+        const t = (note && note.textContent || '').trim();
+        if (t && t !== before) { clearInterval(poll); addBubble('assistant', t); }
+        else if (tries > 50) { clearInterval(poll); addBubble('assistant', 'Sent — check the note under the form for the delivery status.'); }
+      }, 300);
+    });
+    mk('✎ I’ll edit it first', () => {
+      addBubble('user', 'I’ll edit it first');
+      addBubble('assistant', 'No problem — change anything you like, then press Send when you’re happy.');
+      const f = form.querySelector('[data-cf-message]'); if (f) f.focus();
+    });
+    wrap.appendChild(q); wrap.appendChild(row);
+    $('[data-agent-log]').appendChild(wrap); autoscroll();
   }
 
   function autoscroll() { const log = $('[data-agent-log]'); log.scrollTop = log.scrollHeight; }

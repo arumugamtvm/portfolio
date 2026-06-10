@@ -36,6 +36,13 @@ OPENROUTER_MODELS = "google/gemma-4-31b-it:free"
 DEFAULT_OR_MODEL  = "google/gemma-4-31b-it:free"
 # NVIDIA NIM fallback (OpenAI-compatible). Key is a SECRET (NVIDIA_API_KEY). Note: no ":free" suffix.
 NVIDIA_MODEL      = "google/gemma-4-31b-it"
+NVIDIA_MODEL_FAST = "meta/llama-3.1-8b-instruct"  # last racing rung: small, ~0.4s first token, tool-capable
+# Ollama Cloud (OpenAI-compatible, key is a SECRET: OLLAMA_API_KEY) — PRIMARY racer (~0.7s first token).
+OLLAMA_CLOUD_MODEL = "gemma4:31b-cloud"
+# Racing ladder timing: stage 2 launches after HEDGE_MS without a first token,
+# stage 3 at +5s, stage 4 at +10s; PATIENCE_MS is the overall first-token cap.
+HEDGE_MS          = "6000"
+PATIENCE_MS       = "65000"
 MAX_OUTPUT_TOKENS = "512"    # hard server cap on generationConfig.maxOutputTokens
 MAX_BODY_BYTES    = "32768"  # 32 KB request-body ceiling
 MAX_MESSAGES      = "24"     # max turns the client may send

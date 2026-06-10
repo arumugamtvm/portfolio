@@ -16,3 +16,5 @@ OPENROUTER_API_KEY="sk-or-REPLACE-ME-LOCAL-ONLY"
 NVIDIA_API_KEY="nvapi-REPLACE-ME-LOCAL-ONLY"
 # Resend API key (starts with "re_"). Used to email the contact form to CONTACT_TO.
 RESEND_API_KEY="re_REPLACE-ME-LOCAL-ONLY"
+# Ollama Cloud — primary chat racer (https://ollama.com → API keys)
+OLLAMA_API_KEY="ollama-REPLACE-ME-LOCAL-ONLY"

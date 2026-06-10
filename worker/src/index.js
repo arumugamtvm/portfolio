@@ -43,6 +43,8 @@ function loadConfig(env) {
     openrouterModels: csv(env.OPENROUTER_MODELS).length ? csv(env.OPENROUTER_MODELS) : ["google/gemma-4-31b-it:free"],
     openrouterDefault: env.DEFAULT_OR_MODEL || "google/gemma-4-31b-it:free",
     nvidiaModel: env.NVIDIA_MODEL || "google/gemma-4-31b-it", // fallback model (no :free suffix)
+    nvidiaFast: env.NVIDIA_MODEL_FAST || "meta/llama-3.1-8b-instruct", // last-resort racer: small, near-instant, tool-capable
+    ollamaModel: env.OLLAMA_CLOUD_MODEL || "gemma4:31b-cloud", // Ollama Cloud (OLLAMA_API_KEY secret) — primary: ~0.7s first token, same gemma family
     maxOutputTokens: num(env.MAX_OUTPUT_TOKENS, 512),
     maxBodyBytes: num(env.MAX_BODY_BYTES, 32768),
     maxMessages: num(env.MAX_MESSAGES, 24),
@@ -113,6 +115,73 @@ function jsonError(status, code, message, origin, allowed, extra = {}) {
       ...corsHeaders(origin, allowed),
     },
   });
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/* ── first-token provider starter (for racing/hedging) ──────────────────────
+ * POSTs to an OpenAI-compatible SSE endpoint and resolves only once a REAL
+ * `data:` line arrives (queue keep-alive comments like ": PROCESSING" don't
+ * count). Resolves with:
+ *   { kind:"ok", stream }            — stream replays buffered bytes then pipes the rest
+ *   { kind:"http", status, detail }  — endpoint returned an error response
+ *   { kind:"net", detail }           — network failure
+ *   { kind:"stall" }                 — accepted but produced no data within firstDataMs
+ * Never rejects. abort() cancels the request (used to drop the race loser). */
+function startSSEProvider(url, headers, bodyStr, firstDataMs, parentSignal) {
+  const ctrl = new AbortController();
+  const abort = () => { try { ctrl.abort(); } catch { /* already done */ } };
+  if (parentSignal) {
+    if (parentSignal.aborted) abort();
+    else parentSignal.addEventListener("abort", abort, { once: true });
+  }
+  const promise = (async () => {
+    let r;
+    try {
+      r = await fetch(url, { method: "POST", headers, body: bodyStr, signal: ctrl.signal });
+    } catch (e) {
+      return { kind: "net", detail: String(e && e.message).slice(0, 200) };
+    }
+    if (!r.ok) {
+      let detail = "";
+      try { detail = (await r.text()).slice(0, 400); } catch { /* ignore */ }
+      abort();
+      return { kind: "http", status: r.status, detail };
+    }
+    const reader = r.body.getReader();
+    const deadline = Date.now() + firstDataMs;
+    const chunks = [];
+    let seen = "", total = 0;
+    const dec = new TextDecoder();
+    for (;;) {
+      const left = deadline - Date.now();
+      if (left <= 0) { abort(); return { kind: "stall" }; }
+      let res;
+      try {
+        res = await Promise.race([reader.read(), sleep(left).then(() => ({ timedOut: true }))]);
+      } catch {
+        return { kind: "net", detail: "stream read failed" };
+      }
+      if (res.timedOut) { abort(); return { kind: "stall" }; }
+      if (res.done) { abort(); return { kind: "net", detail: "stream ended before any data" }; }
+      chunks.push(res.value);
+      total += res.value.byteLength;
+      seen += dec.decode(res.value, { stream: true });
+      if (seen.includes("data:") || total > 65536) break; // real token (or oversized preamble — pass through)
+    }
+    const stream = new ReadableStream({
+      start(c) { for (const ch of chunks) c.enqueue(ch); chunks.length = 0; },
+      async pull(c) {
+        try {
+          const { value, done } = await reader.read();
+          if (done) c.close(); else c.enqueue(value);
+        } catch { try { c.close(); } catch { /* closed */ } }
+      },
+      cancel() { abort(); },
+    });
+    return { kind: "ok", stream };
+  })();
+  return { promise, abort };
 }
 
 /* ── request validation ──────────────────────────────────────────────────
@@ -519,53 +588,78 @@ export default {
       if (!env.OPENROUTER_API_KEY && !env.NVIDIA_API_KEY) {
         return jsonError(500, "misconfigured", "Server missing chat API keys.", origin, allowed);
       }
-      let orStatus = null;
-      // 1) Primary: OpenRouter.
+      // First-token racing ladder: a provider that ACCEPTS the request but
+      // stalls in a queue is as useless as one that errors. Stages launch at
+      // staggered times; the first stream to produce a real SSE `data:` token
+      // wins and every other in-flight request is aborted. If everything
+      // launched so far has hard-failed, the next stage launches immediately.
+      //   t=0         Ollama Cloud gemma (primary: ~0.7s first token, no queue)
+      //   t=hedge     OpenRouter gemma  (free 50/day, separate quota)
+      //   t=hedge+5s  NVIDIA gemma      (separate quota, queue can stall)
+      //   t=hedge+10s NVIDIA llama-8b   (small + near-instant — bounded worst case)
+      const hedgeMs = Math.max(1000, parseInt(env.HEDGE_MS || "6000", 10));
+      const patienceMs = Math.max(hedgeMs * 3, parseInt(env.PATIENCE_MS || "65000", 10));
+      const nvHeaders = { "Content-Type": "application/json", Authorization: `Bearer ${env.NVIDIA_API_KEY}` };
+      // thinking OFF → straight to the answer (faster, doesn't burn the token cap on reasoning).
+      const nvBody = (model) => JSON.stringify({ ...sanitized.upstream, model, chat_template_kwargs: { enable_thinking: false } });
+      const stages = [];
+      if (env.OLLAMA_API_KEY) {
+        stages.push({ name: "ollama_cloud", at: 0, go: () => startSSEProvider("https://ollama.com/v1/chat/completions", {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.OLLAMA_API_KEY}`,
+        }, JSON.stringify({ ...sanitized.upstream, model: cfg.ollamaModel }), patienceMs, request.signal) });
+      }
       if (env.OPENROUTER_API_KEY) {
-        try {
-          const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, // secret never reaches the client
-              "HTTP-Referer": "https://arumugamg.com",
-              "X-Title": "arumugamg.com site copilot",
-            },
-            body: JSON.stringify(sanitized.upstream),
-            signal: request.signal,
-          });
-          if (r.ok) upstreamResp = r;
-          else orStatus = r.status; // busy / error → fall back to NVIDIA
-        } catch (e) {
-          orStatus = 0; // network error → fall back
+        stages.push({ name: "openrouter", at: stages.length ? hedgeMs : 0, go: () => startSSEProvider("https://openrouter.ai/api/v1/chat/completions", {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${env.OPENROUTER_API_KEY}`, // secret never reaches the client
+          "HTTP-Referer": "https://arumugamg.com",
+          "X-Title": "arumugamg.com site copilot",
+        }, JSON.stringify(sanitized.upstream), patienceMs, request.signal) });
+      }
+      if (env.NVIDIA_API_KEY) {
+        stages.push({ name: "nvidia", at: hedgeMs + 5000, go: () => startSSEProvider(
+          "https://integrate.api.nvidia.com/v1/chat/completions", nvHeaders, nvBody(cfg.nvidiaModel), patienceMs, request.signal) });
+        if (cfg.nvidiaFast && cfg.nvidiaFast !== cfg.nvidiaModel) {
+          stages.push({ name: "nvidia_fast", at: hedgeMs + 10000, go: () => startSSEProvider(
+            "https://integrate.api.nvidia.com/v1/chat/completions", nvHeaders, nvBody(cfg.nvidiaFast), patienceMs, request.signal) });
         }
       }
-      // 2) Fallback: NVIDIA NIM (same OpenAI body; model swapped, no ":free" suffix).
-      if (!upstreamResp && env.NVIDIA_API_KEY) {
-        // thinking OFF → straight to the answer (faster, doesn't burn the token cap on reasoning).
-        const nvBody = JSON.stringify({ ...sanitized.upstream, model: cfg.nvidiaModel, chat_template_kwargs: { enable_thinking: false } });
-        try {
-          const r = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.NVIDIA_API_KEY}` },
-            body: nvBody,
-            signal: request.signal,
-          });
-          if (r.ok) upstreamResp = r;
+      if (!stages.length) return jsonError(500, "misconfigured", "Server missing chat API keys.", origin, allowed);
+
+      const racers = [], fails = {};
+      let winner = null, resolveWin;
+      const winP = new Promise((r) => { resolveWin = r; });
+      const launch = (s) => {
+        const req = s.go();
+        racers.push({ name: s.name, req });
+        req.promise.then((res) => {
+          if (res.kind === "ok") resolveWin({ ...res, name: s.name, req });
           else {
-            let detail = "";
-            try { const eb = await r.json(); detail = (eb && eb.error && (eb.error.message || eb.error)) || JSON.stringify(eb); if (typeof detail !== "string") detail = JSON.stringify(detail); }
-            catch { try { detail = await r.text(); } catch { /* ignore */ } }
-            return jsonError(r.status, "fallback_failed", "The assistant is unavailable right now. Please try again shortly.", origin, allowed, { upstream: detail.slice(0, 400), openrouterStatus: orStatus });
+            fails[s.name] = { kind: res.kind, status: res.status };
+            if (Object.keys(fails).length === stages.length) resolveWin(null); // everyone lost
           }
-        } catch (e) {
-          return jsonError(502, "upstream_unreachable", "Could not reach the assistant. Please try again shortly.", origin, allowed, { detail: String(e && e.message), openrouterStatus: orStatus });
+        });
+      };
+      const t0 = Date.now();
+      for (let i = 0; i < stages.length && !winner; i++) {
+        launch(stages[i]);
+        const nextAt = i + 1 < stages.length ? stages[i + 1].at : patienceMs;
+        while (!winner) {
+          if (racers.every((x) => fails[x.name])) break; // all launched failed → next stage now
+          const left = nextAt - (Date.now() - t0);
+          if (left <= 0) break;
+          winner = await Promise.race([winP, sleep(Math.min(left, 250)).then(() => null)]);
         }
       }
-      if (!upstreamResp) {
-        // OpenRouter failed and no NVIDIA fallback configured.
-        return jsonError(orStatus || 502, "openrouter_error", "The assistant is unavailable right now. Please try again shortly.", origin, allowed, { openrouterStatus: orStatus });
+      if (!winner) winner = await winP; // all stages launched — first token or total failure
+      if (!winner) {
+        const st = (fails.ollama_cloud && fails.ollama_cloud.status) || (fails.openrouter && fails.openrouter.status) || (fails.nvidia && fails.nvidia.status) || 504;
+        const code = st === 429 ? "openrouter_rate_limited" : "fallback_failed";
+        return jsonError(st, code, "The assistant is unavailable right now. Please try again shortly.", origin, allowed, { providers: fails });
       }
+      for (const { req } of racers) if (req !== winner.req) req.abort(); // drop the losers
+      upstreamResp = { ok: true, body: winner.stream };
     } else {
       const key = env.GEMINI_API_KEY;
       if (!key) {
