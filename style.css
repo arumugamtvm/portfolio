@@ -1159,3 +1159,64 @@ html[data-motion="off"] .agent-panel { transition: opacity .12s; }
   .agent-cursor { transition: none; }
   .agent-cursor.click .agent-cursor-ring { animation: none; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+   KIMI-INSPIRED ADDITIONS (matched to the warm/violet/leaf palette)
+   1. Text-scramble decode  2. About terminal card  3. Matrix rain
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Text scramble / decode ──────────────────────────────────── */
+.scrambling { color: var(--violet); }
+html[data-theme="mono"] .scrambling { color: var(--ink); }
+
+/* ── 2. About terminal card ─────────────────────────────────────── */
+.term {
+  margin-top: 2.4rem; max-width: 760px;
+  border: 1px solid var(--line); border-radius: var(--radius-s);
+  background: var(--paper); box-shadow: var(--shadow-2);
+  overflow: hidden; font-family: var(--mono);
+}
+.term-head {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.55rem 0.85rem; border-bottom: 1px solid var(--line-soft);
+  background: var(--bg-2);
+}
+.term-dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+.term-dot.r { background: #ff5f57; }
+.term-dot.y { background: #febc2e; }
+.term-dot.g { background: #28c840; }
+.term-title { margin-left: 0.45rem; font-size: 0.74rem; color: var(--ink-faint); }
+/* OS-adaptive chrome to match the boot terminal (caption glyphs on win/linux) */
+html[data-os="win"] .term-head, html[data-os="linux"] .term-head { flex-direction: row-reverse; }
+html[data-os="win"] .term-title, html[data-os="linux"] .term-title { margin-left: 0; margin-right: auto; }
+html[data-os="win"] .term-dot, html[data-os="linux"] .term-dot {
+  width: auto; height: auto; border-radius: 0; background: none !important;
+  font-family: var(--mono); font-size: 0.74rem; color: var(--ink-faint); line-height: 1;
+}
+html[data-os="win"] .term-dot.r::before, html[data-os="linux"] .term-dot.r::before { content: '\2715'; }
+html[data-os="win"] .term-dot.y::before, html[data-os="linux"] .term-dot.y::before { content: '\25A1'; }
+html[data-os="win"] .term-dot.g::before, html[data-os="linux"] .term-dot.g::before { content: '\2013'; }
+.term-body {
+  padding: 0.95rem 1.05rem; font-size: 0.82rem; line-height: 1.75;
+  min-height: 9.5rem; color: var(--ink-soft);
+}
+.term-row { white-space: pre-wrap; word-break: break-word; }
+.term-prompt { color: var(--leaf); font-weight: 600; }
+.term-cmd { color: var(--ink); }
+.term-out { color: var(--ink-soft); padding: 0.05rem 0 0.55rem; }
+.term-caret {
+  display: inline-block; width: 0.55ch; height: 1em; vertical-align: -0.15em;
+  background: var(--leaf); border-radius: 1px;
+  animation: term-blink 1s step-end infinite;
+}
+@keyframes term-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .term-caret { animation: none; } }
+
+/* ── 3. Matrix rain (midnight theme only) ───────────────────────── */
+.matrix-rain {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  opacity: 0; transition: opacity 0.6s ease;
+}
+.matrix-rain.on { opacity: 0.14; }
+html:not([data-theme="midnight"]) .matrix-rain { display: none; }
+@media (prefers-reduced-motion: reduce) { .matrix-rain { display: none !important; } }

@@ -142,6 +142,45 @@
   const name = document.querySelector('[data-name]');
   if (name) setTimeout(() => name.classList.add('drawn'), 400);
 
+  /* ── Text scramble / decode on reveal ───────────────────────── */
+  (() => {
+    const targets = [...document.querySelectorAll('[data-scramble]')];
+    if (!targets.length || reduce) return; // reduced motion: leave text as-is
+    const GLYPHS = '!<>-_\\/[]{}=+*^?#·:;01';
+    const done = new WeakSet();
+    function scramble(el) {
+      if (done.has(el)) return; done.add(el);
+      const text = el.textContent;
+      const dur = Math.min(900, 260 + text.length * 34);
+      const start = performance.now();
+      el.classList.add('scrambling');
+      const tick = (now) => {
+        const p = Math.min(1, (now - start) / dur);
+        const revealed = Math.floor(p * text.length);
+        let out = '';
+        for (let i = 0; i < text.length; i++) {
+          const c = text[i];
+          out += (c === ' ' || i < revealed) ? c : GLYPHS[(Math.random() * GLYPHS.length) | 0];
+        }
+        el.textContent = out;
+        if (p < 1) requestAnimationFrame(tick);
+        else { el.textContent = text; el.classList.remove('scrambling'); }
+      };
+      requestAnimationFrame(tick);
+    }
+    function check() {
+      const vh = innerHeight;
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const el = targets[i];
+        const r = el.getBoundingClientRect();
+        if (r.top < vh * 0.9 && r.bottom > 0) { scramble(el); targets.splice(i, 1); }
+      }
+    }
+    addEventListener('scroll', check, { passive: true });
+    addEventListener('resize', check);
+    check(); setTimeout(check, 400);
+  })();
+
   /* ── Skills data + render ───────────────────────────────────── */
   const SKILLS = [
     { name: 'JavaScript', cat: 'lang', lvl: 92, note: 'The language I use most, on the web and the server.' },
@@ -184,6 +223,70 @@
       renderSkills(b.dataset.filter);
     });
   });
+
+  /* ── About terminal card (typed on first view) ──────────────── */
+  (() => {
+    const body = document.querySelector('[data-termbody]');
+    if (!body) return;
+    const PROMPT = 'arumugam@dev:~$';
+    const LINES = [
+      { cmd: 'whoami', out: 'software_engineer' },
+      { cmd: 'cat philosophy.txt', out: 'Ship a working version early, then make it better, step by step.' },
+      { cmd: 'ls skills/', out: SKILLS.length + ' skills found' },
+    ];
+    const caretRow = () => {
+      const r = document.createElement('div'); r.className = 'term-row';
+      r.innerHTML = `<span class="term-prompt">${PROMPT}</span> <span class="term-caret"></span>`;
+      return r;
+    };
+    function renderInstant() {
+      body.innerHTML = '';
+      LINES.forEach((l) => {
+        const r = document.createElement('div'); r.className = 'term-row';
+        r.innerHTML = `<span class="term-prompt">${PROMPT}</span> <span class="term-cmd"></span>`;
+        r.querySelector('.term-cmd').textContent = l.cmd;
+        body.appendChild(r);
+        const o = document.createElement('div'); o.className = 'term-out'; o.textContent = l.out;
+        body.appendChild(o);
+      });
+      body.appendChild(caretRow());
+    }
+    let started = false;
+    function typeAll() {
+      if (started) return; started = true;
+      if (reduce) { renderInstant(); return; }
+      let li = 0;
+      const nextLine = () => {
+        if (li >= LINES.length) { body.appendChild(caretRow()); return; }
+        const l = LINES[li++];
+        const r = document.createElement('div'); r.className = 'term-row';
+        r.innerHTML = `<span class="term-prompt">${PROMPT}</span> <span class="term-cmd"></span><span class="term-caret"></span>`;
+        body.appendChild(r);
+        const cmdEl = r.querySelector('.term-cmd');
+        const caret = r.querySelector('.term-caret');
+        let ci = 0;
+        const typeChar = () => {
+          cmdEl.textContent = l.cmd.slice(0, ++ci);
+          if (ci < l.cmd.length) setTimeout(typeChar, 36 + Math.random() * 42);
+          else setTimeout(() => {
+            if (caret) caret.remove();
+            const o = document.createElement('div'); o.className = 'term-out'; o.textContent = l.out;
+            body.appendChild(o);
+            setTimeout(nextLine, 340);
+          }, 230);
+        };
+        typeChar();
+      };
+      nextLine();
+    }
+    const host = body.closest('[data-term]') || body;
+    const check = () => {
+      const r = host.getBoundingClientRect();
+      if (r.top < innerHeight * 0.85 && r.bottom > 0) { typeAll(); removeEventListener('scroll', check); }
+    };
+    addEventListener('scroll', check, { passive: true });
+    check(); setTimeout(check, 500);
+  })();
 
   /* ── Copy email ─────────────────────────────────────────────── */
   document.querySelectorAll('[data-copy]').forEach((btn) => {
@@ -252,6 +355,63 @@ NOTE
       window.dispatchEvent(new CustomEvent('ws-theme', { detail: next }));
     });
   });
+
+  /* ── Matrix rain (midnight theme only; pauses when hidden) ───── */
+  (() => {
+    const canvas = document.querySelector('.matrix-rain');
+    if (!canvas || reduce) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const CHARS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789<>/[]{}=+*'.split('');
+    const fontSize = 15;
+    let drops = [], dpr = 1, lastT = 0, raf = 0, running = false;
+    function resize() {
+      dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = innerWidth * dpr; canvas.height = innerHeight * dpr;
+      canvas.style.width = innerWidth + 'px'; canvas.style.height = innerHeight + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const cols = Math.ceil(innerWidth / fontSize);
+      drops = Array.from({ length: cols }, () => Math.random() * -120);
+    }
+    const tok = (v, f) => (getComputedStyle(root).getPropertyValue(v).trim() || f);
+    function draw(t) {
+      raf = requestAnimationFrame(draw);
+      if (t - lastT < 1000 / 30) return; lastT = t;
+      ctx.fillStyle = 'rgba(14,13,20,0.12)';
+      ctx.fillRect(0, 0, innerWidth, innerHeight);
+      ctx.font = fontSize + "px 'JetBrains Mono', monospace";
+      const head = tok('--leaf', '#56e0a4'), trail = tok('--violet', '#9d8cff');
+      for (let i = 0; i < drops.length; i++) {
+        const ch = CHARS[(Math.random() * CHARS.length) | 0];
+        const y = drops[i] * fontSize;
+        ctx.fillStyle = Math.random() > 0.86 ? trail : head;
+        ctx.fillText(ch, i * fontSize, y);
+        if (y > innerHeight && Math.random() > 0.975) drops[i] = 0;
+        else drops[i] += 0.5 + Math.random();
+      }
+    }
+    function start() {
+      if (running) return; running = true;
+      resize(); addEventListener('resize', resize);
+      lastT = 0; raf = requestAnimationFrame(draw);
+      canvas.classList.add('on');
+    }
+    function stop() {
+      if (!running) return; running = false;
+      cancelAnimationFrame(raf); removeEventListener('resize', resize);
+      canvas.classList.remove('on');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    function sync() {
+      const midnight = (root.getAttribute('data-theme') || 'cream') === 'midnight';
+      (midnight && document.visibilityState === 'visible') ? start() : stop();
+    }
+    new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    document.addEventListener('visibilitychange', sync);
+    sync();
+  })();
+
   document.querySelectorAll('[data-toggle-top]').forEach((b) => {
     b.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
   });

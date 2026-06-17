@@ -141,6 +141,8 @@
     <span class="blob b3"></span>
   </div>
   <div class="dot-field" aria-hidden="true"></div>
+  <!-- Matrix rain (midnight theme only; started/stopped by script.js) -->
+  <canvas class="matrix-rain" aria-hidden="true"></canvas>
 
   <!-- Custom cursor -->
   <div class="cursor-ring" aria-hidden="true"></div>
@@ -229,7 +231,7 @@
   <!-- ════════ ABOUT ════════ -->
   <section id="about" data-screen-label="About">
     <div class="wrap">
-      <p class="eyebrow reveal">About me</p>
+      <p class="eyebrow reveal" data-scramble>About me</p>
       <h2 class="section-title reveal">A bit<br>about me.</h2>
       <div class="about-grid">
         <div class="about-copy reveal">
@@ -274,6 +276,15 @@
           </div>
         </div>
       </div>
+
+      <!-- Live terminal card (typed by script.js; OS-styled like the boot) -->
+      <div class="term reveal" data-term aria-hidden="true" style="--rd:.14s">
+        <div class="term-head">
+          <span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span>
+          <span class="term-title">arumugam@portfolio: ~</span>
+        </div>
+        <div class="term-body" data-termbody></div>
+      </div>
     </div>
   </section>
 
@@ -285,7 +296,7 @@
     <div class="wrap">
       <div class="skills-head">
         <div>
-          <p class="eyebrow reveal">The toolbelt</p>
+          <p class="eyebrow reveal" data-scramble>The toolbelt</p>
           <h2 class="section-title reveal">Things I make<br>computers do.</h2>
         </div>
         <div class="skills-toggle reveal" data-skillfilter style="--rd:.1s">
@@ -308,7 +319,7 @@
       <div class="h-track" data-htrack>
 
         <div class="h-intro">
-          <p class="eyebrow">Side quests &amp; main quests</p>
+          <p class="eyebrow" data-scramble>Side quests &amp; main quests</p>
           <h2 class="section-title">Things<br>I've built.</h2>
           <p class="section-lead" style="margin-bottom:1.4rem">Keep scrolling — the projects slide in from the side. A few are below; more live on my GitHub.</p>
           <p class="h-hint"><span class="h-hint-arrow">→</span> scroll to see more</p>
@@ -419,7 +430,7 @@
   <!-- ════════ PATH / TIMELINE ════════ -->
   <section id="path" data-screen-label="Path">
     <div class="wrap-narrow">
-      <p class="eyebrow reveal">How I got here</p>
+      <p class="eyebrow reveal" data-scramble>How I got here</p>
       <h2 class="section-title reveal">My path<br>so far.</h2>
       <div class="timeline">
         <div class="tl-item reveal">
@@ -463,7 +474,7 @@
     </div>
     <div class="wrap">
       <div class="contact-card reveal">
-        <p class="eyebrow" style="color:var(--coral); justify-content:center;">Say hello</p>
+        <p class="eyebrow" style="color:var(--coral); justify-content:center;" data-scramble>Say hello</p>
         <h2>Let's build<br>something good.</h2>
         <p>Have an idea, a project, a job, or a question? Send me a message below — I read every one and I reply soon.</p>
         <div class="contact-actions">
