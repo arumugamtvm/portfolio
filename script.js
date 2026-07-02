@@ -2294,3 +2294,126 @@ NOTE
 //   });
 // })();
 // */
+
+
+/* ════════════════════════════════════════════════════════════════
+   CONTACT FORM — animated, creative send-button feedback.
+   Replaces the basic plain-text note with morphing button states:
+   idle → sending → sent ✓ / error ✕ → idle.
+   ════════════════════════════════════════════════════════════════ */
+(() => {
+  'use strict';
+  const form = document.querySelector('[data-contact-form]');
+  if (!form) return;
+  const btn = form.querySelector('[data-cf-send]');
+  const note = form.querySelector('[data-cf-note]');
+  const val = (sel) => (form.querySelector(sel) || {}).value || '';
+
+  const setNote = (msg, cls) => {
+    note.textContent = msg;
+    note.className = 'contact-note ' + (cls || '');
+  };
+
+  // save original button content so we can restore it
+  if (!btn.dataset.origHtml) btn.dataset.origHtml = btn.innerHTML;
+
+  function setBtnState(state, label) {
+    btn.classList.remove('cf-state-idle', 'cf-state-sending', 'cf-state-sent', 'cf-state-error');
+    btn.classList.add('cf-state-' + state);
+    if (label !== undefined) {
+      const txt = btn.querySelector('.cf-btn-label') || (() => {
+        const s = document.createElement('span'); s.className = 'cf-btn-label'; btn.appendChild(s); return s;
+      })();
+      txt.textContent = label;
+    }
+  }
+
+  function burstConfetti() {
+    const colors = ['#6b4eff', '#ff7a45', '#1f9d6b', '#ffd23f'];
+    for (let i = 0; i < 40; i++) {
+      const p = document.createElement('span');
+      const size = 5 + Math.random() * 7;
+      Object.assign(p.style, {
+        position: 'fixed', left: '50%', top: '60%', width: size + 'px', height: size + 'px',
+        background: colors[i % colors.length], borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+        zIndex: 9800, pointerEvents: 'none', willChange: 'transform,opacity',
+      });
+      document.body.appendChild(p);
+      const ang = Math.PI * (Math.random() * 1.4 - 0.7) - Math.PI / 2;
+      const vel = 160 + Math.random() * 220;
+      p.animate([
+        { transform: 'translate(-50%,-50%) rotate(0deg)', opacity: 1 },
+        { transform: `translate(${Math.cos(ang)*vel - 50}%, ${Math.sin(ang)*vel + 180}%) rotate(${Math.random()*720}deg)`, opacity: 0 },
+      ], { duration: 1200 + Math.random() * 600, easing: 'cubic-bezier(.2,.7,.2,1)' }).onfinish = () => p.remove();
+    }
+  }
+
+  const DEFAULT_WORKER = 'https://arumugamg-copilot.test-dev-user-606.workers.dev';
+  const workerUrl = () => {
+    try { return (localStorage.getItem('ws-agent-worker-url') || DEFAULT_WORKER).replace(/\/$/, ''); }
+    catch (e) { return DEFAULT_WORKER; }
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = val('[data-cf-name]').trim();
+    const email = val('[data-cf-email]').trim();
+    const message = val('[data-cf-message]').trim();
+    const company = val('[data-cf-company]'); // honeypot
+
+    if (!name || !email || !message) {
+      setNote('Please fill in your name, email, and message.', 'err');
+      btn.classList.remove('cf-shake'); void btn.offsetWidth; btn.classList.add('cf-shake');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setNote('Please enter a valid email address.', 'err');
+      btn.classList.remove('cf-shake'); void btn.offsetWidth; btn.classList.add('cf-shake');
+      return;
+    }
+
+    setBtnState('sending', 'Sending');
+    setNote('Sending your message…', '');
+
+    try {
+      const res = await fetch(workerUrl() + '/api/contact', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message, company }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.ok) {
+        setBtnState('sent', 'Sent ✓');
+        setNote('Thanks! Your message is on its way. I’ll reply soon.', 'ok');
+        burstConfetti();
+        form.reset();
+        setTimeout(() => { setBtnState('idle'); setNote('', ''); }, 4200);
+      } else {
+        throw new Error((data.error && data.error.message) || 'send failed');
+      }
+    } catch (err) {
+      setBtnState('error', 'Try again ✕');
+      setNote('Could not reach the server. Please email garumugamtvm@gmail.com directly.', 'err');
+      btn.classList.remove('cf-shake'); void btn.offsetWidth; btn.classList.add('cf-shake');
+      setTimeout(() => { setBtnState('idle'); }, 2800);
+    }
+  });
+
+  // initialise button label container without breaking the original HTML
+  if (!btn.querySelector('.cf-btn-label')) {
+    // extract only direct text-node content (skip child elements like the .arr span)
+    let labelText = '';
+    for (const node of btn.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) labelText += node.textContent;
+    }
+    labelText = labelText.trim();
+    const existingArr = btn.querySelector('.arr');
+    btn.innerHTML = '';
+    const txt = document.createElement('span');
+    txt.className = 'cf-btn-label';
+    txt.textContent = labelText;
+    btn.appendChild(txt);
+    if (existingArr) btn.appendChild(existingArr);
+    else { const arr = document.createElement('span'); arr.className = 'arr'; arr.textContent = '→'; btn.appendChild(arr); }
+  }
+})();

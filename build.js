@@ -129,6 +129,14 @@ if (fs.existsSync(sitemapPath)) {
 
 const CONTENT = path.join(ROOT, 'content');
 
+// Feature flags — disable content page generation without deleting source files
+const BUILD_FLAGS = {
+  blog:   false,  // blog pages disabled (nav links removed)
+  learn:  false,  // learn pages disabled (nav links removed)
+  track:  true,   // track page enabled
+  wallet: true,   // wallet page enabled
+};
+
 /* tiny markdown → HTML (headings, code fences, lists, quotes, hr,
    bold/em/links/inline-code, paragraphs; raw HTML tables pass through) */
 function esc(x) { return x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }

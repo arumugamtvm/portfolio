@@ -1117,6 +1117,48 @@ html[data-motion="off"] .agent-panel { transition: opacity .12s; }
 .contact-note { font-family: var(--mono); font-size: 0.8rem; margin-top: 0.6rem; min-height: 1.1rem; }
 .contact-note.ok { color: var(--leaf); }
 .contact-note.err { color: var(--coral); }
+
+/* ── Animated send-button states (idle → sending → sent / error → idle) ── */
+.cf-send {
+  position: relative; overflow: hidden;
+  transition: background .35s ease, color .35s ease, transform .25s ease, box-shadow .35s ease;
+}
+.cf-send .cf-btn-label { display: inline-block; transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .25s; }
+.cf-send .arr { transition: transform .35s cubic-bezier(.2,.8,.2,1), opacity .25s; display: inline-block; }
+.cf-send.cf-state-sending { background: var(--violet); color: #fff; pointer-events: none; }
+.cf-send.cf-state-sending .cf-btn-label { opacity: .85; }
+.cf-send.cf-state-sending .arr { opacity: 0; transform: translateX(12px); }
+.cf-send.cf-state-sending::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+  border-radius: 50%; animation: cf-spin .9s linear infinite;
+}
+@keyframes cf-spin { to { transform: rotate(360deg); } }
+.cf-send.cf-state-sent {
+  background: var(--leaf); color: #fff;
+  box-shadow: 0 14px 30px -12px color-mix(in oklab, var(--leaf) 60%, transparent);
+  animation: cf-pop .55s cubic-bezier(.2,.9,.3,1.4);
+}
+.cf-send.cf-state-sent .cf-btn-label { transform: scale(1.06); }
+.cf-send.cf-state-sent .arr { opacity: 0; transform: translateX(20px); }
+.cf-send.cf-state-error {
+  background: var(--coral); color: #fff;
+  box-shadow: 0 14px 30px -12px color-mix(in oklab, var(--coral) 60%, transparent);
+}
+.cf-send.cf-state-error .arr { opacity: 0; transform: translateX(20px); }
+@keyframes cf-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.cf-send.cf-shake { animation: cf-shake .5s cubic-bezier(.36,.07,.19,.97); }
+@keyframes cf-shake {
+  10%,90% { transform: translateX(-2px); }
+  20%,80% { transform: translateX(4px); }
+  30%,50%,70% { transform: translateX(-7px); }
+  40%,60% { transform: translateX(7px); }
+}
 @media (max-width: 520px) { .contact-form .cf-row { grid-template-columns: 1fr; } }
 
 /* Panel is a <section> — neutralise inherited section padding/skew; hide backend/model from visitors */
