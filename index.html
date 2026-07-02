@@ -159,8 +159,6 @@
       <li><a href="#skills">Skills</a></li>
       <li><a href="#work">Work</a></li>
       <li><a href="#path">Path</a></li>
-      <li><a href="/blog/">Blog</a></li>
-      <li><a href="/learn/">Learn</a></li>
       <li><a href="#contact">Contact</a></li>
     </ul>
     <div style="display:flex; align-items:center; gap:0.8rem;">
@@ -187,13 +185,16 @@
         <p class="hero-sub">I turn ideas into clean, fast, and simple software. I like making real things that work well and are easy to use.</p>
         <div class="hero-btns">
           <a href="#work" class="btn btn-solid" data-hot>See the work <span class="arr">→</span></a>
-          <a href="#contact" class="btn btn-ghost" data-hot>Hire the chaos</a>
+          <a href="#contact" class="btn btn-ghost" data-hot>Let's Connect</a>
         </div>
       </div>
 
       <!-- Playground -->
       <div class="hero-play" data-play aria-hidden="true">
         <div class="hero-orb"></div>
+        <div class="hero-portrait">
+          <img src="arumugam-g.png" alt="Arumugam G" width="220" height="220" />
+        </div>
         <div class="sticker s-coffee" data-float>
           <span class="big">∞</span>
           <span class="lbl">cups of coffee</span>
@@ -235,15 +236,6 @@
       <h2 class="section-title reveal">A bit<br>about me.</h2>
       <div class="about-grid">
         <div class="about-copy reveal">
-          <figure class="about-portrait">
-            <img
-              src="arumugam-g.png"
-              alt="Arumugam G, Software Engineer based in Thiruvananthapuram, India — professional headshot"
-              width="1090"
-              height="1443"
-              loading="lazy"
-              decoding="async" />
-          </figure>
           <p>I'm a software engineer. I enjoy taking an empty file and turning it into something people can really use.</p>
           <p>I <strong>build fast and keep improving</strong>. I like to ship a working version early, then make it better step by step.</p>
           <p>I care about the things that make software good: <span class="hl">clean, readable code</span>, clear names, and handling errors so the next person (often me, months later) has an easy time.</p>
@@ -259,7 +251,7 @@
           <div class="card tilt stat-card">
             <div class="tilt-in">
               <span class="stat-num coral">24/7</span>
-              <span class="stat-lbl">build mode (send help / coffee)</span>
+              <span class="stat-lbl">build mode</span>
             </div>
           </div>
           <div class="card tilt stat-card">
@@ -288,136 +280,9 @@
     </div>
   </section>
 
-  <!-- ════════ SKILLS ════════ -->
-  <section id="skills" data-screen-label="Skills">
-    <div class="wave-top" aria-hidden="true">
-      <svg viewBox="0 0 1440 120" preserveAspectRatio="none"><path d="M0,64 C240,120 480,8 720,40 C960,72 1200,128 1440,72 L1440,0 L0,0 Z"/></svg>
-    </div>
-    <div class="wrap">
-      <div class="skills-head">
-        <div>
-          <p class="eyebrow reveal" data-scramble>The toolbelt</p>
-          <h2 class="section-title reveal">Things I make<br>computers do.</h2>
-        </div>
-        <div class="skills-toggle reveal" data-skillfilter style="--rd:.1s">
-          <button class="active" data-filter="all">All</button>
-          <button data-filter="lang">Languages</button>
-          <button data-filter="tool">Tools &amp; Stuff</button>
-        </div>
-      </div>
-      <p class="section-lead reveal">These are the main tools I work with. Hover any one to see a short note.</p>
-      <div class="skill-grid" data-skills>
-        <!-- filled by script.js -->
-      </div>
-    </div>
-  </section>
+  <!-- Skills section removed -->
 
-  <!-- ════════ WORK (horizontal pinned gallery) ════════ -->
-  <section id="work" class="h-scroll" data-screen-label="Work">
-    <div class="h-pin">
-      <div class="h-rail" aria-hidden="true"><span class="h-rail-fill" data-hrail></span></div>
-      <div class="h-track" data-htrack>
-
-        <div class="h-intro">
-          <p class="eyebrow" data-scramble>Side quests &amp; main quests</p>
-          <h2 class="section-title">Things<br>I've built.</h2>
-          <p class="section-lead" style="margin-bottom:1.4rem">Keep scrolling — the projects slide in from the side. A few are below; more live on my GitHub.</p>
-          <p class="h-hint"><span class="h-hint-arrow">→</span> scroll to see more</p>
-        </div>
-
-        <article class="card tilt proj h-card" data-hot>
-          <div class="proj-shot">
-            <span class="badge live">live</span>
-            <div class="cv cv1" aria-hidden="true">
-              <span class="panel p1 float"></span>
-              <span class="panel p3 float" style="animation-delay:-3s"></span>
-              <span class="panel p2 float" style="animation-delay:-1.5s"></span>
-            </div>
-          </div>
-          <div class="proj-body tilt-in">
-            <span class="h-num">01</span>
-            <h3>This Very Portfolio</h3>
-            <p class="proj-desc">The website you're looking at. I designed and built it from scratch, including the 3D background and the AI chat assistant.</p>
-            <div class="proj-tags"><span>HTML</span><span>CSS</span><span>Vanilla JS</span><span>3D transforms</span></div>
-            <span class="proj-link">Read the source <span class="arr">→</span></span>
-          </div>
-        </article>
-
-        <article class="card tilt proj h-card" data-hot>
-          <div class="proj-shot">
-            <span class="badge wip">in progress</span>
-            <div class="cv cv2" aria-hidden="true">
-              <svg viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice">
-                <line x1="60" y1="60" x2="150" y2="40" /><line x1="150" y1="40" x2="250" y2="70" />
-                <line x1="60" y1="60" x2="110" y2="140" /><line x1="110" y1="140" x2="210" y2="150" />
-                <line x1="210" y1="150" x2="250" y2="70" /><line x1="150" y1="40" x2="110" y2="140" />
-                <circle class="pulse" cx="60" cy="60" r="7" />
-                <circle class="pulse c-coral" cx="150" cy="40" r="9" style="animation-delay:-.8s" />
-                <circle class="pulse" cx="250" cy="70" r="7" style="animation-delay:-1.4s" />
-                <circle class="pulse" cx="110" cy="140" r="7" style="animation-delay:-2s" />
-                <circle class="pulse c-coral" cx="210" cy="150" r="8" style="animation-delay:-1.1s" />
-              </svg>
-            </div>
-          </div>
-          <div class="proj-body tilt-in">
-            <span class="h-num">02</span>
-            <h3>Auto-Sync Project Wall</h3>
-            <p class="proj-desc">A small tool that reads my GitHub repositories and shows them here automatically, so this page stays up to date on its own.</p>
-            <div class="proj-tags"><span>Node.js</span><span>GitHub API</span><span>Cron</span><span>Hope</span></div>
-            <span class="proj-link">Follow the chaos <span class="arr">→</span></span>
-          </div>
-        </article>
-
-        <article class="card tilt proj h-card" data-hot>
-          <div class="proj-shot">
-            <span class="badge">experiment</span>
-            <div class="cv cv3" aria-hidden="true">
-              <span class="node blink" style="width:14px;height:14px;top:30%;left:24%"></span>
-              <span class="node coral blink" style="width:20px;height:20px;top:54%;left:46%;animation-delay:-.7s"></span>
-              <span class="node blink" style="width:11px;height:11px;top:34%;left:68%;animation-delay:-1.3s"></span>
-              <span class="node coral blink" style="width:9px;height:9px;top:70%;left:74%;animation-delay:-1.9s"></span>
-              <span class="node blink" style="width:12px;height:12px;top:72%;left:28%;animation-delay:-1s"></span>
-            </div>
-          </div>
-          <div class="proj-body tilt-in">
-            <span class="h-num">03</span>
-            <h3>Weekend AI Tinkering</h3>
-            <p class="proj-desc">On weekends I try new AI tools and build small apps with them. Some are just for fun; a few turn out to be really useful.</p>
-            <div class="proj-tags"><span>Python</span><span>LLM APIs</span><span>Prompts</span><span>Curiosity</span></div>
-            <span class="proj-link">See the rabbit holes <span class="arr">→</span></span>
-          </div>
-        </article>
-
-        <article class="card tilt proj h-card" data-hot>
-          <div class="proj-shot">
-            <span class="badge wip">soon™</span>
-            <div class="cv cv4" aria-hidden="true">
-              <span class="corner tl"></span>
-              <span class="corner br"></span>
-              <span class="frame">building<span class="caret"></span></span>
-            </div>
-          </div>
-          <div class="proj-body tilt-in">
-            <span class="h-num">04</span>
-            <h3>The Next One</h3>
-            <p class="proj-desc">My next project. It's just an idea right now — check back soon to see what it becomes.</p>
-            <div class="proj-tags"><span>TBD</span><span>Caffeine</span><span>Ambition</span></div>
-            <span class="proj-link">Place your bets <span class="arr">→</span></span>
-          </div>
-        </article>
-
-        <div class="h-outro">
-          <h3>That's the<br>presentable pile.</h3>
-          <p>The rest? On GitHub, gloriously unfinished.</p>
-          <div class="h-outro-btns">
-            <a href="https://github.com/arumugamtvm" target="_blank" rel="noopener" class="btn btn-violet" data-hot><span class="ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></span> The full pile on GitHub <span class="arr">→</span></a>
-            <button class="btn btn-ghost" data-resume data-hot><span class="ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Download résumé</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </section>
+  <!-- Work section removed -->
 
   <!-- Marquee strip 2 -->
   <div class="marquee" aria-hidden="true">
@@ -457,12 +322,6 @@
           <h3>Building every day</h3>
           <p>Today I build for the web with JavaScript, TypeScript, C#, Dart, Node.js, and React — and I keep picking up new tools.</p>
         </div>
-        <div class="tl-item reveal" style="--rd:.24s">
-          <span class="tl-node"></span>
-          <p class="tl-year">Next</p>
-          <h3>What's next</h3>
-          <p>Maybe the project you have in mind. Have an idea? Scroll down and send me a message.</p>
-        </div>
       </div>
     </div>
   </section>
@@ -498,9 +357,6 @@
 
   <!-- FOOTER -->
   <footer>
-    <p>Made by Arumugam G.</p>
-    <p class="tiny">© 2026 Arumugam G · Built with HTML, CSS, and JavaScript.</p>
-    <p class="egg-hint">Tip: try the <b>↑ ↑ ↓ ↓ ← → ← → B A</b> keys, or click the glowing circle a few times.</p>
   </footer>
 
   <!-- Easter-egg toast -->
@@ -508,7 +364,7 @@
 
   <!-- Mini quick-controls -->
   <div class="mini-controls" aria-hidden="false">
-    <button class="mini-btn" data-open-chat title="Chat with this site (local AI)" aria-label="Chat with this site" aria-haspopup="dialog" aria-expanded="false"><span class="ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></svg></span></button>
+    <!-- Chat launcher commented out (agent chatbot disabled) -->
     <button class="mini-btn" data-toggle-theme title="Switch theme" aria-label="Switch theme"><span class="ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></span></button>
     <button class="mini-btn" data-toggle-top title="Back to top" aria-label="Back to top"><span class="ico" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></span></button>
   </div>

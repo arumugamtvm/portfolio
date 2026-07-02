@@ -232,7 +232,7 @@
     const LINES = [
       { cmd: 'whoami', out: 'software_engineer' },
       { cmd: 'cat philosophy.txt', out: 'Ship a working version early, then make it better, step by step.' },
-      { cmd: 'ls skills/', out: SKILLS.length + ' skills found' },
+      { cmd: 'ls skills/', out: SKILLS.length + ' arrows in the quiver, all aimed 🎯' },
     ];
     const caretRow = () => {
       const r = document.createElement('div'); r.className = 'term-row';
@@ -522,7 +522,6 @@ NOTE
   menu.innerHTML = `
     <div class="ctx-head"><span>Arumugam · quick menu</span><span class="blink"></span></div>
     <button class="ctx-item" data-act="email"><span class="ic">${ico('mail')}</span>Copy my email<span class="meta">⌘C</span></button>
-    <button class="ctx-item" data-act="resume"><span class="ic">${ico('file')}</span>Grab my résumé<span class="meta">.txt</span></button>
     <button class="ctx-item" data-act="github"><span class="ic">${ico('github')}</span>Open GitHub<span class="meta">↗</span></button>
     <div class="ctx-sep"></div>
     <button class="ctx-item" data-act="theme"><span class="ic">${ico('palette')}</span>Switch the vibe<span class="meta">theme</span></button>
@@ -562,8 +561,6 @@ NOTE
       (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject())
         .catch(() => { const t = document.createElement('textarea'); t.value = v; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); });
       egg('email copied — now go say hi ✶');
-    } else if (act === 'resume') {
-      const btn = document.querySelector('[data-resume]'); if (btn) btn.click();
     } else if (act === 'github') {
       window.open('https://github.com/arumugamtvm', '_blank', 'noopener');
     } else if (act === 'theme') {
@@ -847,92 +844,95 @@ NOTE
   /* unlock(): no-op shim — remaining callers (boot/drag/cmdk/midnight) are harmless. */
   const unlock = () => {};
 
-  /* ════════ DEV-HUD — editor-style status bar (replaces the XP/achievement HUD) ════════ */
-  (() => {
-    const reduceHud = reduce || root.getAttribute('data-motion') === 'off';
-    const bar = document.createElement('div');
-    bar.className = 'devbar';
-    bar.setAttribute('role', 'group');
-    bar.setAttribute('aria-label', 'Developer status bar');
-    bar.innerHTML = `
-      <button class="db-seg db-net" data-net aria-label="Network status">
-        <span class="db-dot" aria-hidden="true"></span><span class="db-net-t">online</span>
-      </button>
-      <span class="db-sep" aria-hidden="true"></span>
-      <button class="db-seg db-git" data-git aria-label="Open latest commit on GitHub">
-        <span class="db-branch">main</span><span class="db-ok" aria-hidden="true">✓</span>
-        <span class="db-commit" data-commit>—</span>
-      </button>
-      <span class="db-sep" aria-hidden="true"></span>
-      <button class="db-seg db-crumb" data-crumb aria-label="Jump to current section">~/</button>
-      <span class="db-spacer" title="Collapse"></span>
-      <span class="db-seg db-build" title="CI: npm run build → gh-pages">build:&nbsp;<b>passing</b></span>
-      <span class="db-sep" aria-hidden="true"></span>
-      <button class="db-seg db-os" aria-label="Operating system">${OS_LABEL}</button>
-      <span class="db-seg db-clock" data-clock aria-hidden="true">--:--</span>
-      <span class="db-seg db-fps" data-fps aria-hidden="true">-- fps</span>
-      <button class="db-seg db-theme" aria-label="Cycle theme"><span data-themelbl>cream</span></button>`;
-    document.body.appendChild(bar);
-    const $1 = (s) => bar.querySelector(s);
-
-    /* network (real) */
-    const dot = $1('.db-dot'), netT = $1('.db-net-t');
-    const setNet = () => { const on = navigator.onLine; netT.textContent = on ? 'online' : 'offline'; dot.classList.toggle('off', !on); };
-    addEventListener('online', setNet); addEventListener('offline', setNet); setNet();
-
-    /* build / last commit (real; injected by build.js as window.__BUILD; falls back in dev) */
-    const b = window.__BUILD || {};
-    if (b.when) {
-      const mins = (Date.now() - new Date(b.when)) / 6e4;
-      const ago = mins < 60 ? Math.max(1, mins | 0) + 'm ago' : mins < 1440 ? (mins / 60 | 0) + 'h ago' : (mins / 1440 | 0) + 'd ago';
-      $1('[data-commit]').textContent = ago;
-    }
-    $1('[data-git]').onclick = () => (b.sha && b.sha !== 'dev')
-      ? window.open('https://github.com/arumugamtvm/portfolio/commit/' + b.sha, '_blank', 'noopener')
-      : window.open('https://github.com/arumugamtvm/portfolio', '_blank', 'noopener');
-
-    /* clock (real) */
-    const clock = $1('[data-clock]');
-    const tickClock = () => clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    tickClock(); if (!reduceHud) setInterval(tickClock, 15000);
-
-    /* fps (real rAF delta; paused under reduced motion) */
-    const fpsEl = $1('[data-fps]');
-    if (reduceHud) { fpsEl.textContent = '— fps'; }
-    else {
-      let last = performance.now(), frames = 0, acc = 0;
-      const loop = (t) => { frames++; acc += t - last; last = t;
-        if (acc >= 500) { const v = Math.round(frames / (acc / 1000)); if (v > 0) fpsEl.textContent = v + ' fps'; frames = 0; acc = 0; }
-        requestAnimationFrame(loop); };
-      requestAnimationFrame(loop);
-    }
-
-    /* breadcrumb (real; reads section[data-screen-label]) */
-    const crumb = $1('[data-crumb]');
-    const secs = [...document.querySelectorAll('section[data-screen-label]')];
-    if (secs.length && 'IntersectionObserver' in window) {
-      const io = new IntersectionObserver((es) => {
-        es.forEach((e) => { if (e.isIntersecting) {
-          const id = e.target.id || e.target.dataset.screenLabel.toLowerCase();
-          crumb.textContent = '~/' + id; crumb.classList.add('active');
-          clearTimeout(crumb._t); crumb._t = setTimeout(() => crumb.classList.remove('active'), 600);
-        }});
-      }, { threshold: 0.5 });
-      secs.forEach((s) => io.observe(s));
-    }
-    crumb.onclick = () => { const id = crumb.textContent.slice(2); const t = document.getElementById(id);
-      if (t) window.scrollTo({ top: id === 'hero' ? 0 : t.offsetTop - 10, behavior: 'smooth' }); };
-
-    /* theme: mirror label + bridge click to the app-wired mini toggler */
-    const tl = $1('[data-themelbl]');
-    const syncTheme = () => tl.textContent = root.getAttribute('data-theme') || 'cream';
-    new MutationObserver(syncTheme).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
-    syncTheme();
-    $1('.db-theme').onclick = () => { const m = document.querySelector('.mini-controls [data-toggle-theme]'); if (m) m.click(); };
-
-    /* collapse toggle (calm — click the empty space) */
-    $1('.db-spacer').onclick = () => bar.classList.toggle('collapsed');
-  })();
+  // ════════════════════════════════════════════════════════════════
+  // DEV-HUD — COMMENTED OUT (status bar removed)
+  // ════════════════════════════════════════════════════════════════
+//   /* ════════ DEV-HUD — editor-style status bar (replaces the XP/achievement HUD) ════════ */
+//   (() => {
+//     const reduceHud = reduce || root.getAttribute('data-motion') === 'off';
+//     const bar = document.createElement('div');
+//     bar.className = 'devbar';
+//     bar.setAttribute('role', 'group');
+//     bar.setAttribute('aria-label', 'Developer status bar');
+//     bar.innerHTML = `
+//       <button class="db-seg db-net" data-net aria-label="Network status">
+//         <span class="db-dot" aria-hidden="true"></span><span class="db-net-t">online</span>
+//       </button>
+//       <span class="db-sep" aria-hidden="true"></span>
+//       <button class="db-seg db-git" data-git aria-label="Open latest commit on GitHub">
+//         <span class="db-branch">main</span><span class="db-ok" aria-hidden="true">✓</span>
+//         <span class="db-commit" data-commit>—</span>
+//       </button>
+//       <span class="db-sep" aria-hidden="true"></span>
+//       <button class="db-seg db-crumb" data-crumb aria-label="Jump to current section">~/</button>
+//       <span class="db-spacer" title="Collapse"></span>
+//       <span class="db-seg db-build" title="CI: npm run build → gh-pages">build:&nbsp;<b>passing</b></span>
+//       <span class="db-sep" aria-hidden="true"></span>
+//       <button class="db-seg db-os" aria-label="Operating system">${OS_LABEL}</button>
+//       <span class="db-seg db-clock" data-clock aria-hidden="true">--:--</span>
+//       <span class="db-seg db-fps" data-fps aria-hidden="true">-- fps</span>
+//       <button class="db-seg db-theme" aria-label="Cycle theme"><span data-themelbl>cream</span></button>`;
+//     document.body.appendChild(bar);
+//     const $1 = (s) => bar.querySelector(s);
+// 
+//     /* network (real) */
+//     const dot = $1('.db-dot'), netT = $1('.db-net-t');
+//     const setNet = () => { const on = navigator.onLine; netT.textContent = on ? 'online' : 'offline'; dot.classList.toggle('off', !on); };
+//     addEventListener('online', setNet); addEventListener('offline', setNet); setNet();
+// 
+//     /* build / last commit (real; injected by build.js as window.__BUILD; falls back in dev) */
+//     const b = window.__BUILD || {};
+//     if (b.when) {
+//       const mins = (Date.now() - new Date(b.when)) / 6e4;
+//       const ago = mins < 60 ? Math.max(1, mins | 0) + 'm ago' : mins < 1440 ? (mins / 60 | 0) + 'h ago' : (mins / 1440 | 0) + 'd ago';
+//       $1('[data-commit]').textContent = ago;
+//     }
+//     $1('[data-git]').onclick = () => (b.sha && b.sha !== 'dev')
+//       ? window.open('https://github.com/arumugamtvm/portfolio/commit/' + b.sha, '_blank', 'noopener')
+//       : window.open('https://github.com/arumugamtvm/portfolio', '_blank', 'noopener');
+// 
+//     /* clock (real) */
+//     const clock = $1('[data-clock]');
+//     const tickClock = () => clock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+//     tickClock(); if (!reduceHud) setInterval(tickClock, 15000);
+// 
+//     /* fps (real rAF delta; paused under reduced motion) */
+//     const fpsEl = $1('[data-fps]');
+//     if (reduceHud) { fpsEl.textContent = '— fps'; }
+//     else {
+//       let last = performance.now(), frames = 0, acc = 0;
+//       const loop = (t) => { frames++; acc += t - last; last = t;
+//         if (acc >= 500) { const v = Math.round(frames / (acc / 1000)); if (v > 0) fpsEl.textContent = v + ' fps'; frames = 0; acc = 0; }
+//         requestAnimationFrame(loop); };
+//       requestAnimationFrame(loop);
+//     }
+// 
+//     /* breadcrumb (real; reads section[data-screen-label]) */
+//     const crumb = $1('[data-crumb]');
+//     const secs = [...document.querySelectorAll('section[data-screen-label]')];
+//     if (secs.length && 'IntersectionObserver' in window) {
+//       const io = new IntersectionObserver((es) => {
+//         es.forEach((e) => { if (e.isIntersecting) {
+//           const id = e.target.id || e.target.dataset.screenLabel.toLowerCase();
+//           crumb.textContent = '~/' + id; crumb.classList.add('active');
+//           clearTimeout(crumb._t); crumb._t = setTimeout(() => crumb.classList.remove('active'), 600);
+//         }});
+//       }, { threshold: 0.5 });
+//       secs.forEach((s) => io.observe(s));
+//     }
+//     crumb.onclick = () => { const id = crumb.textContent.slice(2); const t = document.getElementById(id);
+//       if (t) window.scrollTo({ top: id === 'hero' ? 0 : t.offsetTop - 10, behavior: 'smooth' }); };
+// 
+//     /* theme: mirror label + bridge click to the app-wired mini toggler */
+//     const tl = $1('[data-themelbl]');
+//     const syncTheme = () => tl.textContent = root.getAttribute('data-theme') || 'cream';
+//     new MutationObserver(syncTheme).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+//     syncTheme();
+//     $1('.db-theme').onclick = () => { const m = document.querySelector('.mini-controls [data-toggle-theme]'); if (m) m.click(); };
+// 
+//     /* collapse toggle (calm — click the empty space) */
+//     $1('.db-spacer').onclick = () => bar.classList.toggle('collapsed');
+//   })();
 
   /* ════════ COMMAND PALETTE ════════ */
   const scrim = document.createElement('div');
@@ -954,18 +954,18 @@ NOTE
   const COMMANDS = [
     { g: 'Navigate', icon: 'diamond', name: 'Hero', sub: 'Top of page', kbd: 'G H', run: () => go('#hero') },
     { g: 'Navigate', icon: 'diamond', name: 'About', sub: 'Who is typing', run: () => go('#about') },
-    { g: 'Navigate', icon: 'diamond', name: 'Skills', sub: 'The toolbelt', run: () => go('#skills') },
-    { g: 'Navigate', icon: 'diamond', name: 'Work', sub: 'Projects gallery', run: () => go('#work') },
+    // { g: 'Navigate', icon: 'diamond', name: 'Skills', sub: 'The toolbelt', run: () => go('#skills') },
+    // { g: 'Navigate', icon: 'diamond', name: 'Work', sub: 'Projects gallery', run: () => go('#work') },
     { g: 'Navigate', icon: 'diamond', name: 'Path', sub: 'Origin story', run: () => go('#path') },
     { g: 'Navigate', icon: 'diamond', name: 'Contact', sub: 'Say hello', run: () => go('#contact') },
     { g: 'Actions', icon: 'mail', name: 'Copy email', sub: 'garumugamtvm@gmail.com', run: () => { copyEmail(); closeCmd(); } },
-    { g: 'Actions', icon: 'file', name: 'Download résumé', sub: '.txt file', run: () => { closeCmd(); const b = $('[data-resume]'); if (b) b.click(); } },
+    // { g: 'Actions', icon: 'file', name: 'Download résumé', sub: '.txt file', run: () => { closeCmd(); const b = $('[data-resume]'); if (b) b.click(); } },
     { g: 'Actions', icon: 'github', name: 'Open GitHub', sub: 'github.com/arumugamtvm', run: () => { closeCmd(); window.open('https://github.com/arumugamtvm', '_blank', 'noopener'); } },
     { g: 'Actions', icon: 'palette', name: 'Switch theme', sub: 'cream / midnight / mono', run: () => { const b = $('[data-toggle-theme]'); if (b) b.click(); } },
     { g: 'Actions', icon: 'sparkles', name: 'Throw confetti', sub: 'pure serotonin', run: () => { confetti(); } },
-    { g: 'Agents', icon: 'sparkles', name: 'Chat with this site', sub: 'local AI · drives the page', run: () => { closeCmd(); (window.__openChat || (() => {}))(); } },
-    { g: 'Agents', icon: 'search', name: 'Search the web', sub: 'open a web search', run: () => { closeCmd(); const qq = prompt('Search the web for:'); if (qq) window.open('https://duckduckgo.com/?q=' + encodeURIComponent(qq), '_blank', 'noopener'); } },
-    { g: 'Agents', icon: 'bot', name: 'Copy agent context', sub: 'profile.json + llms.txt for AI agents', run: () => { const ctx = 'Arumugam G — Software Engineer (Thiruvananthapuram, India).\nMachine-readable profile: https://arumugamg.com/profile.json\nAgent guide: https://arumugamg.com/llms.txt\nGitHub: https://github.com/arumugamtvm'; (navigator.clipboard ? navigator.clipboard.writeText(ctx) : Promise.reject()).catch(() => { const t = document.createElement('textarea'); t.value = ctx; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }); egg('agent context copied ✶'); closeCmd(); } },
+//     { g: 'Agents', icon: 'sparkles', name: 'Chat with this site', sub: 'local AI · drives the page', run: () => { closeCmd(); (window.__openChat || (() => {}))(); } },
+//     { g: 'Agents', icon: 'search', name: 'Search the web', sub: 'open a web search', run: () => { closeCmd(); const qq = prompt('Search the web for:'); if (qq) window.open('https://duckduckgo.com/?q=' + encodeURIComponent(qq), '_blank', 'noopener'); } },
+//     { g: 'Agents', icon: 'bot', name: 'Copy agent context', sub: 'profile.json + llms.txt for AI agents', run: () => { const ctx = 'Arumugam G — Software Engineer (Thiruvananthapuram, India).\nMachine-readable profile: https://arumugamg.com/profile.json\nAgent guide: https://arumugamg.com/llms.txt\nGitHub: https://github.com/arumugamtvm'; (navigator.clipboard ? navigator.clipboard.writeText(ctx) : Promise.reject()).catch(() => { const t = document.createElement('textarea'); t.value = ctx; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }); egg('agent context copied ✶'); closeCmd(); } },
     { g: 'Secrets', icon: 'moon', name: 'Enter midnight mode', sub: 'shhh', run: () => { root.setAttribute('data-theme', 'midnight'); try { localStorage.setItem('ws-theme', 'midnight'); } catch (e) {} confetti(); closeCmd(); unlock('stylist'); } },
   ];
   function copyEmail() {
@@ -1167,6 +1167,8 @@ NOTE
    ════════════════════════════════════════════════════════════════ */
 (() => {
   'use strict';
+  // Agent chatbot disabled for local dev — bail out before any setup
+  return;
   const root = document.documentElement;
   const THEMES = ['cream', 'midnight', 'mono'];
   const SECTION_IDS = ['hero', 'about', 'skills', 'work', 'path', 'contact'];
@@ -1421,865 +1423,874 @@ NOTE
   };
   window.AGENT = AGENT;
 
-  /* ──────────── chat backends: Gemini via Worker (default) + Ollama (local) ──────────── */
-  const CFG = {
-    provider:    (() => { try { return localStorage.getItem('ws-agent-provider')    || 'openrouter'; } catch (e) { return 'openrouter'; } })(),
-    workerUrl:   (() => { try { return localStorage.getItem('ws-agent-worker-url')  || 'https://arumugamg-copilot.test-dev-user-606.workers.dev'; } catch (e) { return 'https://arumugamg-copilot.test-dev-user-606.workers.dev'; } })(),
-    endpoint:    (() => { try { return localStorage.getItem('ws-agent-endpoint')    || 'http://localhost:11434'; } catch (e) { return 'http://localhost:11434'; } })(),
-    model:       (() => { try { return localStorage.getItem('ws-agent-model')        || 'qwen3-coder:30b'; } catch (e) { return 'qwen3-coder:30b'; } })(),
-    geminiModel: (() => { try { return localStorage.getItem('ws-agent-gemini-model') || 'gemini-2.5-flash-lite'; } catch (e) { return 'gemini-2.5-flash-lite'; } })(),
-    orModel:     (() => { try { return localStorage.getItem('ws-agent-or-model')     || 'google/gemma-4-31b-it:free'; } catch (e) { return 'google/gemma-4-31b-it:free'; } })(),
-  };
-  const KEEP_ALIVE = '30m';
-  const base = () => CFG.endpoint.replace(/\/$/, '');
-  const workerBase = () => CFG.workerUrl.replace(/\/$/, '');
-
-  async function* readNDJSON(response) {
-    const reader = response.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '';
-    try {
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let nl;
-        while ((nl = buf.indexOf('\n')) >= 0) {
-          const line = buf.slice(0, nl).trim();
-          buf = buf.slice(nl + 1);
-          if (line) yield JSON.parse(line);
-        }
-      }
-      const tail = (buf + dec.decode()).trim();
-      if (tail) yield JSON.parse(tail);
-    } finally { try { reader.releaseLock(); } catch (e) {} }
-  }
-
-  /* ──────────── Gemini client (browser → Cloudflare Worker → Gemini SSE) ──────────── */
-  async function* readSSEJSON(response) {
-    const reader = response.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '';
-    try {
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let lf;
-        while ((lf = buf.indexOf('\n')) >= 0) {
-          const line = buf.slice(0, lf).trim();
-          buf = buf.slice(lf + 1);
-          if (line.startsWith('data:')) {
-            const payload = line.slice(5).trim();
-            if (payload && payload !== '[DONE]') { try { yield JSON.parse(payload); } catch (e) {} }
-          }
-        }
-      }
-      const tail = (buf + dec.decode()).trim();
-      if (tail.startsWith('data:')) { const p = tail.slice(5).trim(); if (p && p !== '[DONE]') { try { yield JSON.parse(p); } catch (e) {} } }
-    } finally { try { reader.releaseLock(); } catch (e) {} }
-  }
-  // internal messages → Gemini `contents`. CRITICAL: assistant → model role.
-  function toGeminiContents(messages) {
-    const contents = [];
-    for (const msg of messages) {
-      if (msg.role === 'system') continue; // lifted to systemInstruction
-      if (msg.role === 'user' || msg.role === 'assistant' || msg.role === 'model') {
-        const role = msg.role === 'user' ? 'user' : 'model';
-        const parts = [];
-        if (msg.content) parts.push({ text: msg.content });
-        if (msg.tool_calls && msg.tool_calls.length) {
-          for (const call of msg.tool_calls) {
-            const fc = { name: call.function.name, args: call.function.arguments || {} };
-            if (call.id) fc.id = call.id;
-            parts.push({ functionCall: fc });
-          }
-        }
-        if (parts.length) contents.push({ role, parts });
-      } else if (msg.role === 'tool') {
-        let resp; try { resp = JSON.parse(msg.content); } catch (e) { resp = { result: String(msg.content) }; }
-        if (resp === null || typeof resp !== 'object') resp = { result: resp };
-        const last = contents[contents.length - 1];
-        const part = { functionResponse: { name: msg.tool_name, response: resp } };
-        if (last && last.role === 'user' && last.parts.some((p) => p.functionResponse)) last.parts.push(part);
-        else contents.push({ role: 'user', parts: [part] });
-      }
-    }
-    return contents;
-  }
-  function toGeminiTools(tools) {
-    if (!tools || !tools.length) return undefined;
-    return [{ functionDeclarations: tools.map((t) => ({
-      name: t.function.name, description: t.function.description, parameters: t.function.parameters,
-    })) }];
-  }
-  async function geminiChat(messages, tools, { onToken, signal } = {}) {
-    const systemPrompt = (messages.find((m) => m.role === 'system') || {}).content || '';
-    const gtools = toGeminiTools(tools);
-    const body = {
-      model: CFG.geminiModel,
-      contents: toGeminiContents(messages),
-      ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
-      ...(gtools ? { tools: gtools } : {}),
-      generationConfig: { temperature: 0.4 }, // Worker forces maxOutputTokens
-    };
-    const res = await fetch(workerBase() + '/api/chat', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      let info = {}; try { info = await res.json(); } catch (e) {}
-      const ec = (info.error && info.error.code) || ('http_' + res.status);
-      const em = (info.error && info.error.message) || ('Worker error ' + res.status);
-      const err = new Error(em); err.workerCode = ec; err.status = res.status; throw err;
-    }
-    let content = '', toolCalls = [];
-    for await (const chunk of readSSEJSON(res)) {
-      const cand = chunk.candidates && chunk.candidates[0];
-      const parts = cand && cand.content && cand.content.parts;
-      if (!parts) continue;
-      for (const part of parts) {
-        if (part.text) { content += part.text; onToken && onToken(part.text); }
-        if (part.functionCall) {
-          toolCalls.push({ id: part.functionCall.id || '', function: {
-            name: part.functionCall.name, arguments: part.functionCall.args || {} } });
-        }
-      }
-    }
-    return { role: 'assistant', content, tool_calls: toolCalls };
-  }
-
-  /* ──────────── OpenRouter client (browser → Worker → OpenRouter, OpenAI-compatible SSE) ──────────── */
-  function toOpenAIMessages(messages) {
-    return messages.map((m) => {
-      if (m.role === 'tool') {
-        return { role: 'tool', tool_call_id: m.tool_call_id || m.tool_name || 'call', content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) };
-      }
-      if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length) {
-        return { role: 'assistant', content: m.content || '', tool_calls: m.tool_calls.map((c, i) => ({
-          id: c.id || ('call_' + i), type: 'function',
-          function: { name: c.function.name, arguments: typeof c.function.arguments === 'string' ? c.function.arguments : JSON.stringify(c.function.arguments || {}) } })) };
-      }
-      return { role: m.role === 'model' ? 'assistant' : m.role, content: m.content || '' };
-    });
-  }
-  async function openrouterChat(messages, tools, { onToken, signal } = {}) {
-    const res = await fetch(workerBase() + '/api/chat', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-      body: JSON.stringify({ provider: 'openrouter', model: CFG.orModel, messages: toOpenAIMessages(messages),
-        ...(tools && tools.length ? { tools } : {}), stream: true, generationConfig: { temperature: 0.4 } }),
-    });
-    if (!res.ok) {
-      let info = {}; try { info = await res.json(); } catch (e) {}
-      const err = new Error((info.error && info.error.message) || ('Worker error ' + res.status));
-      err.workerCode = (info.error && info.error.code) || ('http_' + res.status); err.status = res.status; throw err;
-    }
-    let content = ''; const acc = {};
-    for await (const chunk of readSSEJSON(res)) {
-      const choice = chunk.choices && chunk.choices[0];
-      const delta = choice && choice.delta;
-      if (!delta) continue;
-      if (delta.content) { content += delta.content; onToken && onToken(delta.content); }
-      if (delta.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          const i = tc.index != null ? tc.index : 0;
-          const a = acc[i] || (acc[i] = { id: '', name: '', args: '' });
-          if (tc.id) a.id = tc.id;
-          if (tc.function) { if (tc.function.name) a.name = tc.function.name; if (tc.function.arguments) a.args += tc.function.arguments; }
-        }
-      }
-    }
-    const toolCalls = Object.keys(acc).map((k) => { const a = acc[k]; let args = {};
-      try { args = a.args ? JSON.parse(a.args) : {}; } catch (e) { args = {}; }
-      return { id: a.id || ('call_' + k), function: { name: a.name, arguments: args } }; }).filter((c) => c.function.name);
-    return { role: 'assistant', content, tool_calls: toolCalls };
-  }
-
-  async function ollamaChat(messages, tools, { onToken, signal } = {}) {
-    const res = await fetch(base() + '/api/chat', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
-      body: JSON.stringify({ model: CFG.model, messages,
-        ...(tools && tools.length ? { tools } : {}),
-        stream: true, keep_alive: KEEP_ALIVE, options: { temperature: 0.4 } }),
-    });
-    if (!res.ok) throw new Error('Ollama /api/chat ' + res.status);
-    let content = '', toolCalls = [], role = 'assistant';
-    for await (const chunk of readNDJSON(res)) {
-      const m = chunk.message;
-      if (m) {
-        if (m.role) role = m.role;
-        if (m.content) { content += m.content; onToken && onToken(m.content); }
-        if (m.tool_calls && m.tool_calls.length) toolCalls = toolCalls.concat(m.tool_calls);
-      }
-      if (chunk.done) break;
-    }
-    return { role, content, tool_calls: toolCalls };
-  }
-
-  async function listModels(signal) {
-    const res = await fetch(base() + '/api/tags', { signal, headers: { Accept: 'application/json' } });
-    if (!res.ok) throw new Error('/api/tags ' + res.status);
-    const data = await res.json();
-    return (data.models || []).map((m) => ({
-      name: m.name,
-      tools: Array.isArray(m.capabilities) ? m.capabilities.includes('tools') : undefined,
-      size: m.details && m.details.parameter_size,
-    }));
-  }
-  function warmPing() {
-    fetch(base() + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: CFG.model, messages: [{ role: 'user', content: 'hi' }],
-        stream: false, keep_alive: KEEP_ALIVE, options: { num_predict: 1 } }) }).catch(() => {});
-  }
-  async function probe() {
-    const ctrl = new AbortController();
-    // generous: slow mobile networks legitimately take >2.5s to first byte
-    const timer = setTimeout(() => ctrl.abort(), 7000);
-    try {
-      if (CFG.provider !== 'ollama') {
-        const res = await fetch(workerBase() + '/', { signal: ctrl.signal, headers: { Accept: 'application/json' } });
-        clearTimeout(timer);
-        return res.ok ? { ok: true, models: [] } : { ok: false, reason: 'http-' + res.status };
-      }
-      const res = await fetch(base() + '/api/tags', { signal: ctrl.signal, headers: { Accept: 'application/json' } });
-      clearTimeout(timer);
-      if (!res.ok) return { ok: false, reason: 'http-' + res.status };
-      const data = await res.json();
-      return { ok: true, models: Array.isArray(data.models) ? data.models : [] };
-    } catch (e) { clearTimeout(timer); return { ok: false, reason: e.name === 'AbortError' ? 'timeout' : 'unreachable' }; }
-  }
-
-  /* ──────────── tools + safe dispatcher + grounded prompt ──────────── */
-  const AGENT_TOOLS = [
-    { type:'function', function:{ name:'go_to_section', description:'Smooth-scroll the page to a named section. Map "projects"/"portfolio" to "work".',
-      parameters:{ type:'object', properties:{ id:{ type:'string', enum:SECTION_IDS } }, required:['id'] } } },
-    { type:'function', function:{ name:'switch_theme', description:'Set the visual theme.',
-      parameters:{ type:'object', properties:{ theme:{ type:'string', enum:THEMES } }, required:['theme'] } } },
-    { type:'function', function:{ name:'click_text', description:'Click the on-page link or button whose visible text matches the query.',
-      parameters:{ type:'object', properties:{ text:{ type:'string' } }, required:['text'] } } },
-    { type:'function', function:{ name:'highlight', description:'Visually outline a section (by id) to draw attention.',
-      parameters:{ type:'object', properties:{ target:{ type:'string', enum:SECTION_IDS } }, required:['target'] } } },
-    { type:'function', function:{ name:'run_command', description:'Run a site command.',
-      parameters:{ type:'object', properties:{ command:{ type:'string', enum:['copy_email','download_resume','open_github','confetti','cycle_theme','scroll_top','open_palette'] } }, required:['command'] } } },
-    { type:'function', function:{ name:'get_state', description:'Read the current section, scroll position, and theme.', parameters:{ type:'object', properties:{} } } },
-    { type:'function', function:{ name:'list_sections', description:'List the sections available on the page.', parameters:{ type:'object', properties:{} } } },
-    { type:'function', function:{ name:'present_options', description:'Show the user clickable choice buttons when they should pick one option (e.g. a theme: cream, midnight, mono; or a page). Use this instead of asking them to type the choice. This must be your ONLY tool call that turn — show the buttons, then wait for their tap.',
-      parameters:{ type:'object', properties:{ question:{ type:'string', description:'Short question shown above the buttons (optional).' }, options:{ type:'array', items:{ type:'string' }, description:'The choices; each becomes a clickable button.' } }, required:['options'] } } },
-    { type:'function', function:{ name:'fill_contact_form', description:'Open the contact form and pre-fill it for the user. Use when they want to write, send, or draft an email/message to Arumugam: write a short, polite message from what they said and pass it as "message". Include their name/email only if they told you. The form is NOT sent — the user reviews the draft and presses Send themselves.',
-      parameters:{ type:'object', properties:{ name:{ type:'string', description:'sender name, only if the user gave it' }, email:{ type:'string', description:'sender email, only if the user gave it' }, message:{ type:'string', description:'the drafted message, plain friendly English' } }, required:['message'] } } },
-  ];
-  function dispatchTool(name, args) {
-    const A = window.AGENT;
-    if (!A) return { ok: false, error: 'AGENT not ready' };
-    try {
-      switch (name) {
-        case 'go_to_section': return A.goToSection(String(args.id || ''));
-        case 'switch_theme':  return A.switchTheme(String(args.theme || ''));
-        case 'click_text':    return A.clickText(String(args.text || ''));
-        case 'highlight':     return A.highlight(String(args.target || ''));
-        case 'run_command':   return A.runCommand(String(args.command || ''));
-        case 'get_state':     return A.getState();
-        case 'list_sections': return { ok: true, sections: A.listSections() };
-        case 'present_options': return renderChoices(args.question, args.options);
-        case 'fill_contact_form': return A.fillContact({ name: args.name, email: args.email, message: args.message });
-        default:              return { ok: false, error: 'unknown tool: ' + name };
-      }
-    } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
-  }
-  function chipLabel(name, args, r) {
-    if (!r || !r.ok) return { cls: 'fail', text: (r && r.error) || ('couldn’t run ' + name) };
-    switch (name) {
-      case 'go_to_section': return { cls: 'ok', text: 'scrolled to ' + r.scrolledTo };
-      case 'switch_theme':  return { cls: 'ok', text: 'theme → ' + r.theme };
-      case 'click_text':    return { cls: 'ok', text: 'clicked “' + r.clicked + '”' };
-      case 'highlight':     return { cls: 'ok', text: 'highlighted ' + r.highlighted };
-      case 'run_command':   return { cls: 'ok', text: 'ran: ' + r.ran };
-      case 'fill_contact_form': return { cls: 'ok', text: (r.filled && r.filled.length) ? 'drafted it in the form — review & press Send' : 'opened the contact form' };
-      default:              return null;
-    }
-  }
-
-  let PROFILE = null;
-  const FALLBACK_PROFILE = { name:'Arumugam G', title:'Software Engineer', location:'Thiruvananthapuram, India',
-    email:'garumugamtvm@gmail.com', github:'https://github.com/arumugamtvm',
-    skills:['JavaScript','TypeScript','C#','Dart','Node.js','React','HTML/CSS','Three.js / WebGL','Git','REST APIs','Model Context Protocol (MCP)'], projects:[] };
-  async function loadProfile() {
-    if (PROFILE) return PROFILE;
-    try { const r = await fetch('profile.json', { headers: { Accept: 'application/json' } });
-      if (r.ok) { PROFILE = await r.json(); return PROFILE; } } catch (e) {}
-    PROFILE = FALLBACK_PROFILE; return PROFILE;
-  }
-  function buildSystemPrompt() {
-    const p = PROFILE || FALLBACK_PROFILE;
-    const projects = (p.projects || []).map((x) => '- ' + x.name + ': ' + x.description).join('\n') || '(see the Work section)';
-    return [
-      'You are the guide on ' + p.name + '’s portfolio website (' + p.title + (p.location ? ', ' + p.location : '') + ').',
-      'Every turn, do two things: (1) reply in the chat, and (2) when the person wants to move, see, or change something on the page, call exactly one tool to do it.',
-      '',
-      'Pages on this site: hero, about, skills, work, path, contact. Themes: cream, midnight, mono.',
-      'If they say "projects" or "portfolio", that is the "work" page — use go_to_section with id "work". "experience" or "journey" means "path". "contact" or "hire" means "contact".',
-      'Call a tool when they ask to go somewhere, scroll, change theme, highlight a part, copy the email, get the resume, or open GitHub. Otherwise just reply with words. Use one tool, then say what you did in one short, friendly sentence.',
-      'Only the listed tools exist — never make up a tool name.',
-      'A small pointer moves on the page when you act — it shows the person where to look. So prefer doing the thing over describing it.',
-      'If they want to write, send, or draft an email or message to ' + p.name + ': call fill_contact_form. Write a short, polite message from what they told you and pass it as "message" (add their name/email only if they gave them). If the tool says the draft is complete, a "Send it" button is already on screen — just tell them to check the draft and tap it. If fields are missing, ask for them. You can never send it yourself.',
-      'Ask OR act — never both in one turn. When the user should pick from a few options (like a theme or a page), call present_options ALONE and stop; wait for their tap. Never ask "which would you prefer?" in plain text, and never act before they answer.',
-      'You may use light Markdown in replies: **bold**, bullet lists with -, and [links](https://...). Keep replies short.',
-      '',
-      'Write in clear, simple English. Be warm, short, and professional — 1 to 3 short sentences. No headings, no heavy jargon. Speak as the site ("I can show you..."), not as ' + p.name + '.',
-      'Only use the facts below to answer about ' + p.name + '. If you do not know something, say so and offer to take them to the contact page. Never make up jobs, dates, or numbers.',
-      '',
-      'ABOUT: ' + (p.summary || ''),
-      'SKILLS: ' + (p.skills || []).join(', '),
-      'PROJECTS:\n' + projects,
-      'CONTACT: ' + (p.email || (p.contact && p.contact.email)) + ' · ' + p.github,
-    ].join('\n');
-  }
-
-  /* ──────────── agentic loop (provider-agnostic) ──────────── */
-  const MAX_HOPS = 3; // each hop is a separate billable Gemini call (counts against RPD + RPM)
-  function modelChat(messages, tools, opts) {
-    return CFG.provider === 'openrouter' ? openrouterChat(messages, tools, opts)
-         : CFG.provider === 'gemini' ? geminiChat(messages, tools, opts)
-         : ollamaChat(messages, tools, opts);
-  }
-  async function agenticChat(userText, history, { onToken, onStatus, onTool, signal, useTools } = {}) {
-    const messages = [{ role: 'system', content: buildSystemPrompt() }, ...history, { role: 'user', content: userText }];
-    for (let hop = 0; hop < MAX_HOPS; hop++) {
-      const turn = await modelChat(messages, useTools ? AGENT_TOOLS : null, { onToken, signal });
-      messages.push({ role: 'assistant', content: turn.content, ...(turn.tool_calls.length ? { tool_calls: turn.tool_calls } : {}) });
-      if (!turn.tool_calls.length) return { final: turn.content, messages };
-      // Ask OR act, never both: if the model shows choice buttons, that ends the
-      // turn — any other tool calls bundled with it are dropped, and we wait for
-      // the user's tap instead of letting the model act on an unanswered question.
-      const optCall = turn.tool_calls.find((c) => c.function.name === 'present_options');
-      const calls = optCall ? [optCall] : turn.tool_calls;
-      for (const call of calls) {
-        const fnName = call.function.name;
-        const args = call.function.arguments || {};
-        onStatus && onStatus('running ' + fnName + '…');
-        let result;
-        try { result = await Promise.resolve(dispatchTool(fnName, args)); }
-        catch (e) { result = { ok: false, error: String((e && e.message) || e) }; }
-        onTool && onTool(fnName, args, result);
-        messages.push({ role: 'tool', tool_name: fnName, tool_call_id: call.id, content: JSON.stringify(result) });
-      }
-      if (optCall) return { final: turn.content, messages };
-    }
-    return { final: 'I tried a few steps but couldn’t finish — try rephrasing?', messages };
-  }
-
-  /* ──────────── chat UI controller ──────────── */
-  const PANEL_HTML =
-    '<header class="agent-head">' +
-      '<span class="agent-id"><span class="agent-id-glyph" aria-hidden="true">✦</span>' +
-        '<span class="agent-id-name">site&nbsp;<b>copilot</b></span></span>' +
-      '<span id="agent-sub" class="agent-sub" data-agent-sub-text>ask me anything · I can move the page</span>' +
-      '<button class="agent-icon-btn" data-agent-settings aria-label="Settings" aria-expanded="false">⚙</button>' +
-      '<button class="agent-icon-btn" data-agent-close aria-label="Close assistant"><span class="agent-esc">esc</span></button>' +
-    '</header>' +
-    '<div class="agent-settings" data-agent-settings-panel hidden>' +
-      '<label class="agent-field"><span>assistant</span>' +
-        '<select class="agent-input-mono" data-agent-provider>' +
-          '<option value="openrouter">Online (OpenRouter · Gemma)</option>' +
-          '<option value="gemini">Online (Gemini)</option>' +
-          '<option value="ollama">On your computer (Ollama)</option>' +
-        '</select></label>' +
-      '<label class="agent-field" data-agent-gemini-section><span>backend url</span>' +
-        '<input class="agent-input-mono" data-agent-worker-url type="url" spellcheck="false" autocapitalize="off" /></label>' +
-      '<label class="agent-field" data-agent-ollama-section hidden><span>endpoint</span>' +
-        '<input class="agent-input-mono" data-agent-endpoint type="url" spellcheck="false" autocapitalize="off" /></label>' +
-      '<label class="agent-field" data-agent-ollama-section hidden><span>model</span>' +
-        '<select class="agent-input-mono" data-agent-model aria-describedby="agent-model-note"></select></label>' +
-      '<p id="agent-model-note" class="agent-note" data-agent-model-note></p>' +
-    '</div>' +
-    '<div class="agent-log" data-agent-log role="log" aria-label="Conversation">' +
-      '<div class="agent-welcome" data-agent-welcome>' +
-        '<p>Ask about Arumugam’s work, or tell me where to go — I can scroll the page and open things for you.</p>' +
-        '<div class="agent-chips" role="group" aria-label="Suggested prompts">' +
-          '<button class="agent-chip" data-agent-suggest>Show me your projects</button>' +
-          '<button class="agent-chip" data-agent-suggest>What can you build?</button>' +
-          '<button class="agent-chip" data-agent-suggest>Switch to midnight theme</button>' +
-          '<button class="agent-chip" data-agent-suggest>How do I reach you?</button>' +
-          '<button class="agent-chip" data-agent-suggest>Write a message for me</button>' +
-        '</div>' +
-      '</div>' +
-    '</div>' +
-    '<p class="agent-sr-live" data-agent-live aria-live="polite" aria-atomic="true"></p>' +
-    '<form class="agent-compose" data-agent-form>' +
-      '<textarea class="agent-textarea" data-agent-input rows="1" placeholder="Message the site…" aria-label="Message" enterkeyhint="send"></textarea>' +
-      '<button type="submit" class="agent-send" data-agent-send aria-label="Send">↩</button>' +
-      '<button type="button" class="agent-stop" data-agent-stop aria-label="Stop generating" hidden>■</button>' +
-    '</form>' +
-    '<footer class="agent-status" data-agent-status>' +
-      '<span class="db-dot" data-agent-dot aria-hidden="true"></span>' +
-      '<span class="agent-status-net" data-agent-net>checking…</span>' +
-      '<span class="db-sep" aria-hidden="true"></span>' +
-      '<span class="agent-status-model" data-agent-status-model></span>' +
-      '<span class="agent-status-spacer"></span>' +
-      '<span class="agent-status-meta" data-agent-meta></span>' +
-    '</footer>';
-
-  let panel = null, chatOpen = false, online = false, busy = false, ctrl = null;
-  let history = [];
-  const $ = (s) => panel.querySelector(s);
-  const launcher = () => document.querySelector('[data-open-chat]');
-
-  /* ── safe markdown (escape first, then inline) + clickable choices ── */
-  function escHtml(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function inlineMd(x){
-    return x
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  }
-  function mdToHtml(src){
-    const lines = escHtml(src).split('\n');
-    let html = '', list = [], para = [];
-    const flushList = () => { if (list.length){ html += '<ul>' + list.map((x)=>'<li>'+inlineMd(x)+'</li>').join('') + '</ul>'; list = []; } };
-    const flushPara = () => { if (para.length){ html += '<p>' + para.map(inlineMd).join('<br>') + '</p>'; para = []; } };
-    for (const ln of lines){
-      const li = ln.match(/^\s*[-*]\s+(.+)/);
-      if (li){ flushPara(); list.push(li[1]); }
-      else if (ln.trim() === ''){ flushList(); flushPara(); }
-      else { flushList(); para.push(ln); }
-    }
-    flushList(); flushPara();
-    return html || escHtml(src);
-  }
-  function renderChoices(question, options){
-    options = Array.isArray(options) ? options.filter((o)=>typeof o==='string'&&o.trim()).slice(0,12) : [];
-    if (!options.length) return { ok:false, error:'no options' };
-    const wrap = document.createElement('div'); wrap.className = 'agent-choices';
-    if (question){ const q=document.createElement('p'); q.className='agent-choices-q'; q.textContent=question; wrap.appendChild(q); }
-    const pick = (val)=>{ if (wrap.dataset.done) return; wrap.dataset.done='1'; wrap.classList.add('chosen'); send(val); };
-    const row = document.createElement('div'); row.className='agent-choices-row';
-    if (options.length > 5){
-      const sel=document.createElement('select'); sel.className='agent-input-mono agent-choices-select';
-      options.forEach((o)=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; sel.appendChild(op); });
-      const go=document.createElement('button'); go.type='button'; go.className='agent-chip agent-choices-go'; go.textContent='Go';
-      go.addEventListener('click', ()=>pick(sel.value));
-      row.appendChild(sel); row.appendChild(go);
-    } else {
-      options.forEach((o)=>{ const b=document.createElement('button'); b.type='button'; b.className='agent-chip'; b.textContent=o; b.addEventListener('click', ()=>pick(o)); row.appendChild(b); });
-    }
-    wrap.appendChild(row); $('[data-agent-log]').appendChild(wrap); autoscroll();
-    return { ok:true, presented: options };
-  }
-
-  /* one-tap confirmation after the copilot drafts the contact form; the send
-     still goes through the real form button — nothing fires without the tap */
-  function renderContactConfirm(form) {
-    if (!panel) return;
-    const wrap = document.createElement('div'); wrap.className = 'agent-choices';
-    const q = document.createElement('p'); q.className = 'agent-choices-q'; q.textContent = 'Draft is ready — send it?';
-    const row = document.createElement('div'); row.className = 'agent-choices-row';
-    const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'agent-chip'; b.textContent = label;
-      b.addEventListener('click', () => { if (wrap.dataset.done) return; wrap.dataset.done = '1'; wrap.classList.add('chosen'); fn(); }); row.appendChild(b); };
-    mk('✓ Send it', () => {
-      addBubble('user', 'Send it');
-      const btn = form.querySelector('[data-cf-send]');
-      CURSOR.pointAt(btn, { label: 'sending', click: true, then: () => btn.click() });
-      // mirror the form's own status note into the chat once it lands
-      const note = form.querySelector('[data-cf-note]');
-      const before = (note && note.textContent || '').trim();
-      let tries = 0;
-      const poll = setInterval(() => {
-        tries++;
-        const t = (note && note.textContent || '').trim();
-        if (t && t !== before) { clearInterval(poll); addBubble('assistant', t); }
-        else if (tries > 50) { clearInterval(poll); addBubble('assistant', 'Sent — check the note under the form for the delivery status.'); }
-      }, 300);
-    });
-    mk('✎ I’ll edit it first', () => {
-      addBubble('user', 'I’ll edit it first');
-      addBubble('assistant', 'No problem — change anything you like, then press Send when you’re happy.');
-      const f = form.querySelector('[data-cf-message]'); if (f) f.focus();
-    });
-    wrap.appendChild(q); wrap.appendChild(row);
-    $('[data-agent-log]').appendChild(wrap); autoscroll();
-  }
-
-  function autoscroll() { const log = $('[data-agent-log]'); log.scrollTop = log.scrollHeight; }
-  function clearWelcome() { const w = $('[data-agent-welcome]'); if (w) w.remove(); }
-  function addBubble(kind, text, asMarkdown) {
-    const wrap = document.createElement('div');
-    wrap.className = 'agent-msg ' + (kind === 'user' ? 'is-user' : 'is-assistant');
-    const b = document.createElement('div');
-    b.className = 'agent-bubble';
-    if (kind !== 'user' && asMarkdown) b.innerHTML = mdToHtml(text || '');
-    else b.textContent = text || '';
-    wrap.appendChild(b);
-    $('[data-agent-log]').appendChild(wrap);
-    autoscroll();
-    return b;
-  }
-  function addThinking() {
-    const wrap = document.createElement('div');
-    wrap.className = 'agent-msg is-assistant';
-    wrap.setAttribute('data-agent-thinking', '');
-    wrap.innerHTML = '<div class="agent-bubble agent-thinking"><span></span><span></span><span></span></div>';
-    $('[data-agent-log]').appendChild(wrap); autoscroll();
-    return wrap;
-  }
-  function addToolChip(name, args, result) {
-    const c = chipLabel(name, args, result);
-    if (!c) return;
-    const d = document.createElement('div');
-    d.className = 'agent-tool ' + c.cls;
-    d.innerHTML = '<span class="agent-tool-arrow" aria-hidden="true">↳</span><span class="agent-tool-label"></span>';
-    d.querySelector('.agent-tool-label').textContent = c.text;
-    $('[data-agent-log]').appendChild(d); autoscroll();
-  }
-  function setStatus(state, meta) {
-    const s = $('[data-agent-status]'), dot = $('[data-agent-dot]'), net = $('[data-agent-net]');
-    s.classList.toggle('is-offline', state === 'offline');
-    dot.classList.toggle('off', state === 'offline');
-    const offTxt = CFG.provider === 'ollama' ? 'offline · Ollama unreachable' : 'offline · backend unreachable';
-    net.textContent = state === 'online' ? 'online' : state === 'offline' ? offTxt : 'checking…';
-    $('[data-agent-status-model]').textContent = CFG.provider === 'openrouter' ? CFG.orModel : CFG.provider === 'gemini' ? CFG.geminiModel : CFG.model;
-    if (meta !== undefined) $('[data-agent-meta]').textContent = meta || '';
-  }
-  function setBusy(b) {
-    busy = b;
-    $('[data-agent-send]').hidden = b;
-    $('[data-agent-stop]').hidden = !b;
-    $('[data-agent-input]').disabled = false;
-  }
-
-  /* strip <think>…</think> from streamed tokens, keep them out of the visible bubble */
-  function makeThinkStripper() {
-    let inThink = false, carry = '';
-    return (delta) => {
-      let s = carry + delta; carry = '';
-      let out = '';
-      while (s.length) {
-        if (inThink) {
-          const end = s.indexOf('</think>');
-          if (end === -1) { if (s.length > 8) s = s.slice(-8); carry = s; break; }
-          s = s.slice(end + 8); inThink = false;
-        } else {
-          const open = s.indexOf('<think>');
-          if (open === -1) {
-            const lt = s.lastIndexOf('<');
-            if (lt !== -1 && '<think>'.startsWith(s.slice(lt))) { out += s.slice(0, lt); carry = s.slice(lt); }
-            else out += s;
-            break;
-          }
-          out += s.slice(0, open); s = s.slice(open + 7); inThink = true;
-        }
-      }
-      return out;
-    };
-  }
-
-  async function send(text) {
-    text = (text || '').trim();
-    if (!text || busy) return;
-    clearWelcome();
-    addBubble('user', text);
-    $('[data-agent-input]').value = '';
-    autoGrow();
-    const liveText = [];
-    ctrl = new AbortController();
-    setBusy(true);
-    // Free-tier model queues can stall for minutes — don't show "thinking" forever.
-    let timedOut = false;
-    const slowTimer = setTimeout(() => { timedOut = true; try { ctrl.abort(); } catch (e) {} }, 75000);
-    const slowNote = setTimeout(() => { setStatus(online ? 'online' : 'offline', 'the free model is waking up — give it a few more seconds…'); }, 9000);
-    const thinkingEl = addThinking();
-    let bubble = null;
-    const strip = makeThinkStripper();
-    const onToken = (delta) => {
-      const vis = strip(delta);
-      if (!vis) return;
-      if (!bubble) { if (thinkingEl) thinkingEl.remove(); bubble = addBubble('assistant', ''); bubble.setAttribute('aria-busy', 'true'); }
-      bubble.textContent += vis; liveText.push(vis); autoscroll();
-    };
-    try {
-      let toolRan = false, sawOptions = false;
-      const r = await agenticChat(text, history.slice(-8), {
-        onToken,
-        onStatus: (m) => setStatus(online ? 'online' : 'offline', m),
-        onTool: (n, a, res) => {
-          if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-          toolRan = true; if (n === 'present_options') sawOptions = true;
-          addToolChip(n, a, res);
-        },
-        // Cloud providers: always send full capability — the offline probe can
-        // be wrong (slow network, transient block) and the POST is the real test.
-        signal: ctrl.signal, useTools: online || CFG.provider !== 'ollama',
-      });
-      if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      if (!online) { online = true; setStatus('online'); } // the POST succeeded — probe was wrong
-      // Never leave an empty bubble: if the model returned no words, say
-      // something sensible — unless choice buttons are already on screen.
-      const finalText = (liveText.join('') || strip(r.final || '') || r.final || '').trim()
-        || (sawOptions ? '' : toolRan ? 'Done — anything else you’d like to see?' : 'Hmm, I didn’t get a reply that time. Please try again.');
-      if (!bubble && finalText) bubble = addBubble('assistant', finalText, true);
-      else if (bubble) bubble.innerHTML = mdToHtml(finalText);
-      if (bubble) bubble.removeAttribute('aria-busy');
-      $('[data-agent-live]').textContent = finalText.slice(0, 220);
-      history.push({ role: 'user', content: text });
-      history.push({ role: 'assistant', content: (r.final || finalText || '(showed choice buttons)') });
-      setStatus(online ? 'online' : 'offline', '');
-    } catch (e) {
-      if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
-      if (e && e.name === 'AbortError') {
-        if (bubble) bubble.removeAttribute('aria-busy');
-        if (timedOut) addError('rate_limited_slow'); // watchdog fired: tell them instead of spinning forever
-      }
-      else { addError(e && e.workerCode); }
-    } finally { clearTimeout(slowTimer); clearTimeout(slowNote); setBusy(false); ctrl = null; }
-  }
-
-  function addError(workerCode) {
-    const isGemini = CFG.provider === 'gemini';
-    const wc = workerCode || '';
-    const msg = (wc === 'gemini_forbidden' || wc === 'openrouter_forbidden') ? '⚠ The model key was refused. You can switch the assistant in settings.'
-      : wc === 'daily_budget_exhausted' ? '⚠ The assistant has reached today’s usage limit. Please try again tomorrow, or switch the assistant in settings.'
-      : /rate_limited/.test(wc) ? '⚠ The assistant is busy right now. Please try again in a moment.'
-      : CFG.provider === 'ollama' ? '⚠ I could not reach the local model.'
-      : '⚠ I can’t reach the assistant service from this network. Some mobile networks block it — Wi-Fi or another network usually works. You can always use the contact form below instead.';
-    const d = document.createElement('div');
-    d.className = 'agent-error'; d.setAttribute('role', 'alert');
-    d.innerHTML = '<span></span>' +
-      '<button class="agent-link" data-agent-retry>retry</button>' +
-      '<button class="agent-link" data-agent-copyctx>copy my info for another AI →</button>';
-    d.querySelector('span').textContent = msg;
-    $('[data-agent-log]').appendChild(d); autoscroll();
-  }
-
-  function offlineMessage() {
-    const enable = 'This live AI runs on a local Ollama model on Arumugam’s machine — private by design, ' +
-      'nothing leaves the device, no cloud, no API keys. To run it yourself: clone the repo, ' +
-      '`ollama pull qwen3-coder:30b`, start Ollama, and open the site from http://localhost.';
-    if (location.protocol === 'https:')
-      return 'The live AI assistant is local-first — it talks to an Ollama model on localhost, which the ' +
-        'deployed site can’t reach (the browser and Ollama restrict cross-origin calls to a localhost server — ' +
-        'that’s expected, and keeps it private). ' + enable + ' Meanwhile, here’s a quick guided tour:';
-    return 'I couldn’t reach a local Ollama instance right now. ' + enable + ' In the meantime, a guided tour:';
-  }
-
-  async function renderScriptedFallback() {
-    const p = await loadProfile();
-    const QA = [
-      { label: 'About',    go: 'about',   answer: () => (p.name + ' — ' + p.title + '. ' + (p.summary || '')).trim() },
-      { label: 'Skills',   go: 'skills',  answer: () => 'Core stack: ' + (p.skills || FALLBACK_PROFILE.skills).join(', ') + '.' },
-      { label: 'Projects', go: 'work',    answer: () => (p.projects || []).map((x) => '• ' + x.name + ' — ' + x.description).join('\n') || 'See the Work section + GitHub.' },
-      { label: 'Contact',  go: 'contact', answer: () => 'Email: ' + (p.email || (p.contact && p.contact.email)) + '\nGitHub: ' + p.github },
-    ];
-    const row = document.createElement('div');
-    row.className = 'agent-chips';
-    QA.forEach((item) => {
-      const b = document.createElement('button');
-      b.className = 'agent-chip'; b.textContent = item.label;
-      b.addEventListener('click', () => { addBubble('user', item.label); addBubble('assistant', item.answer()); window.AGENT.goToSection(item.go); });
-      row.appendChild(b);
-    });
-    $('[data-agent-log]').appendChild(row); autoscroll();
-  }
-
-  function autoGrow() {
-    const ta = $('[data-agent-input]'); if (!ta) return;
-    ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px';
-  }
-
-  let offlineNoticeShown = false, reprobeTimer = 0;
-  function scheduleReprobe() {
-    // Quietly keep checking while offline — slow or flaky networks (mobile
-    // especially) often come back; flip to online without user action.
-    clearTimeout(reprobeTimer);
-    if (online || !chatOpen) return;
-    reprobeTimer = setTimeout(async () => {
-      if (online || !chatOpen) return;
-      const p = await probe();
-      if (p.ok) { online = true; offlineNoticeShown = false; setStatus('online'); }
-      else scheduleReprobe();
-    }, 30000);
-  }
-  async function refreshConnection() {
-    setStatus('checking');
-    const p = await probe();
-    online = p.ok;
-    setStatus(online ? 'online' : 'offline');
-    if (online) offlineNoticeShown = false; else scheduleReprobe();
-    $('[data-agent-input]').disabled = false;
-    if (CFG.provider === 'ollama') {
-      if (online) {
-        warmPing();
-        try {
-          const models = await listModels();
-          const sel = $('[data-agent-model]'); sel.innerHTML = '';
-          let hasCfg = false;
-          models.forEach((m) => {
-            const o = document.createElement('option');
-            o.value = m.name;
-            o.textContent = m.name + (m.tools === false ? ' — text only' : '');
-            if (m.name === CFG.model) { o.selected = true; hasCfg = true; }
-            sel.appendChild(o);
-          });
-          if (!hasCfg && models.length) {
-            const tcap = models.find((m) => m.tools) || models[0];
-            CFG.model = tcap.name; sel.value = tcap.name; saveCfg();
-          }
-          setStatus('online');
-          updateModelNote(models);
-        } catch (e) {}
-      } else if (!offlineNoticeShown) {
-        offlineNoticeShown = true; // never stack duplicate notices on re-probes
-        clearWelcome();
-        addBubble('assistant', offlineMessage());
-        renderScriptedFallback();
-      }
-    } else { // cloud providers (via Worker)
-      if (online) setStatus('online');
-      else if (!offlineNoticeShown) {
-        offlineNoticeShown = true;
-        clearWelcome();
-        addBubble('assistant', offlineWorkerMessage());
-        renderScriptedFallback();
-      }
-    }
-  }
-  function updateModelNote(models) {
-    const note = $('[data-agent-model-note]');
-    const m = (models || []).find((x) => x.name === CFG.model);
-    if (m && m.tools === false) { note.textContent = 'this model can chat but can’t drive the page.'; note.classList.add('warn'); }
-    else { note.textContent = ''; note.classList.remove('warn'); }
-  }
-  function saveCfg() {
-    try {
-      localStorage.setItem('ws-agent-provider', CFG.provider);
-      localStorage.setItem('ws-agent-worker-url', CFG.workerUrl);
-      localStorage.setItem('ws-agent-endpoint', CFG.endpoint);
-      localStorage.setItem('ws-agent-model', CFG.model);
-      localStorage.setItem('ws-agent-gemini-model', CFG.geminiModel);
-      localStorage.setItem('ws-agent-or-model', CFG.orModel);
-    } catch (e) {}
-  }
-  function offlineWorkerMessage() {
-    return 'I can’t reach my assistant service right now — some networks (often mobile data) block it, ' +
-      'and it usually works on Wi-Fi or another network. I’ll keep retrying quietly. ' +
-      'Meanwhile the quick links below work fully, and you can always email Arumugam directly — the address is in the Contact section:';
-  }
-
-  function build() {
-    panel = document.createElement('section');
-    panel.id = 'agent-panel';
-    panel.className = 'ws-chat agent-panel';
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'Site assistant');
-    panel.hidden = true;
-    panel.innerHTML = PANEL_HTML;
-    document.body.appendChild(panel);
-
-    $('[data-agent-endpoint]').value = CFG.endpoint;
-    $('[data-agent-worker-url]').value = CFG.workerUrl;
-    $('[data-agent-provider]').value = CFG.provider;
-    $('[data-agent-status-model]').textContent = CFG.provider === 'openrouter' ? CFG.orModel : CFG.provider === 'gemini' ? CFG.geminiModel : CFG.model;
-
-    function updateSettingsView() {
-      const isOllama = CFG.provider === 'ollama';
-      panel.querySelectorAll('[data-agent-ollama-section]').forEach((el) => { el.hidden = !isOllama; });
-      panel.querySelectorAll('[data-agent-gemini-section]').forEach((el) => { el.hidden = isOllama; });
-      const sub = $('[data-agent-sub-text]'); if (sub) sub.textContent = isOllama ? 'runs on your computer' : 'ask me anything · I can move the page';
-    }
-    updateSettingsView();
-
-    $('[data-agent-close]').addEventListener('click', closeChat);
-    $('[data-agent-form]').addEventListener('submit', (e) => { e.preventDefault(); send($('[data-agent-input]').value); });
-    $('[data-agent-stop]').addEventListener('click', () => { if (ctrl) ctrl.abort(); });
-    $('[data-agent-input]').addEventListener('input', autoGrow);
-    $('[data-agent-input]').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send($('[data-agent-input]').value); }
-    });
-    panel.querySelectorAll('[data-agent-suggest]').forEach((b) =>
-      b.addEventListener('click', () => send(b.textContent)));
-    $('[data-agent-settings]').addEventListener('click', (e) => {
-      const sp = $('[data-agent-settings-panel]'); const open = sp.hidden;
-      sp.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open));
-    });
-    $('[data-agent-provider]').addEventListener('change', (e) => { CFG.provider = e.target.value; saveCfg(); updateSettingsView(); clearWelcome(); refreshConnection(); });
-    $('[data-agent-worker-url]').addEventListener('change', (e) => { CFG.workerUrl = e.target.value.trim() || CFG.workerUrl; saveCfg(); refreshConnection(); });
-    $('[data-agent-endpoint]').addEventListener('change', (e) => { CFG.endpoint = e.target.value.trim() || 'http://localhost:11434'; saveCfg(); refreshConnection(); });
-    $('[data-agent-model]').addEventListener('change', (e) => { CFG.model = e.target.value; saveCfg(); setStatus(online ? 'online' : 'offline'); });
-    panel.addEventListener('click', (e) => {
-      const t = e.target.closest('[data-agent-retry], [data-agent-copyctx]');
-      if (!t) return;
-      if (t.hasAttribute('data-agent-retry')) refreshConnection();
-      else { const v = 'Arumugam G — Software Engineer (Thiruvananthapuram, India).\nProfile: https://arumugamg.com/profile.json\nGuide: https://arumugamg.com/llms.txt\nGitHub: https://github.com/arumugamtvm';
-        (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).catch(() => {}); egg('agent context copied ✶'); }
-    });
-  }
-
-  function openChat() {
-    if (!panel) build();
-    panel.hidden = false;
-    requestAnimationFrame(() => panel.classList.add('is-open'));
-    chatOpen = true;
-    const l = launcher(); if (l) l.setAttribute('aria-expanded', 'true');
-    loadProfile();
-    refreshConnection();
-    setTimeout(() => $('[data-agent-input]').focus(), 80);
-  }
-  function closeChat() {
-    if (!panel) return;
-    panel.classList.remove('is-open');
-    chatOpen = false;
-    const l = launcher(); if (l) l.setAttribute('aria-expanded', 'false');
-    if (ctrl) { try { ctrl.abort(); } catch (e) {} }
-    setTimeout(() => { if (!chatOpen) panel.hidden = true; }, 240);
-    if (l) l.focus();
-  }
-  window.__openChat = openChat;
-
-  document.querySelectorAll('[data-open-chat]').forEach((b) => b.addEventListener('click', openChat));
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && chatOpen) { e.stopPropagation(); closeChat(); }
-  }, true);
-
-  const providerLabel = CFG.provider === 'ollama' ? 'local Ollama' : CFG.provider === 'gemini' ? 'Gemini via Worker' : 'OpenRouter/Gemma via Worker';
-  console.log('%c✦ site copilot ready — click ✦ or ⌘K → "Chat with this site" (' + providerLabel + ').', 'font-size:12px;color:#6b4eff');
+  /* ════════════════════════════════════════════════════════════════
+     BACKEND INTEGRATION — CHAT COPILOT (COMMENTED OUT FOR LOCAL DEV)
+     ════════════════════════════════════════════════════════════════ */
+//   /* ──────────── chat backends: Gemini via Worker (default) + Ollama (local) ──────────── */
+//   const CFG = {
+//     provider:    (() => { try { return localStorage.getItem('ws-agent-provider')    || 'openrouter'; } catch (e) { return 'openrouter'; } })(),
+//     workerUrl:   (() => { try { return localStorage.getItem('ws-agent-worker-url')  || 'https://arumugamg-copilot.test-dev-user-606.workers.dev'; } catch (e) { return 'https://arumugamg-copilot.test-dev-user-606.workers.dev'; } })(),
+//     endpoint:    (() => { try { return localStorage.getItem('ws-agent-endpoint')    || 'http://localhost:11434'; } catch (e) { return 'http://localhost:11434'; } })(),
+//     model:       (() => { try { return localStorage.getItem('ws-agent-model')        || 'qwen3-coder:30b'; } catch (e) { return 'qwen3-coder:30b'; } })(),
+//     geminiModel: (() => { try { return localStorage.getItem('ws-agent-gemini-model') || 'gemini-2.5-flash-lite'; } catch (e) { return 'gemini-2.5-flash-lite'; } })(),
+//     orModel:     (() => { try { return localStorage.getItem('ws-agent-or-model')     || 'google/gemma-4-31b-it:free'; } catch (e) { return 'google/gemma-4-31b-it:free'; } })(),
+//   };
+//   const KEEP_ALIVE = '30m';
+//   const base = () => CFG.endpoint.replace(/\/$/, '');
+//   const workerBase = () => CFG.workerUrl.replace(/\/$/, '');
+// 
+//   async function* readNDJSON(response) {
+//     const reader = response.body.getReader();
+//     const dec = new TextDecoder();
+//     let buf = '';
+//     try {
+//       for (;;) {
+//         const { value, done } = await reader.read();
+//         if (done) break;
+//         buf += dec.decode(value, { stream: true });
+//         let nl;
+//         while ((nl = buf.indexOf('\n')) >= 0) {
+//           const line = buf.slice(0, nl).trim();
+//           buf = buf.slice(nl + 1);
+//           if (line) yield JSON.parse(line);
+//         }
+//       }
+//       const tail = (buf + dec.decode()).trim();
+//       if (tail) yield JSON.parse(tail);
+//     } finally { try { reader.releaseLock(); } catch (e) {} }
+//   }
+// 
+//   /* ──────────── Gemini client (browser → Cloudflare Worker → Gemini SSE) ──────────── */
+//   async function* readSSEJSON(response) {
+//     const reader = response.body.getReader();
+//     const dec = new TextDecoder();
+//     let buf = '';
+//     try {
+//       for (;;) {
+//         const { value, done } = await reader.read();
+//         if (done) break;
+//         buf += dec.decode(value, { stream: true });
+//         let lf;
+//         while ((lf = buf.indexOf('\n')) >= 0) {
+//           const line = buf.slice(0, lf).trim();
+//           buf = buf.slice(lf + 1);
+//           if (line.startsWith('data:')) {
+//             const payload = line.slice(5).trim();
+//             if (payload && payload !== '[DONE]') { try { yield JSON.parse(payload); } catch (e) {} }
+//           }
+//         }
+//       }
+//       const tail = (buf + dec.decode()).trim();
+//       if (tail.startsWith('data:')) { const p = tail.slice(5).trim(); if (p && p !== '[DONE]') { try { yield JSON.parse(p); } catch (e) {} } }
+//     } finally { try { reader.releaseLock(); } catch (e) {} }
+//   }
+//   // internal messages → Gemini `contents`. CRITICAL: assistant → model role.
+//   function toGeminiContents(messages) {
+//     const contents = [];
+//     for (const msg of messages) {
+//       if (msg.role === 'system') continue; // lifted to systemInstruction
+//       if (msg.role === 'user' || msg.role === 'assistant' || msg.role === 'model') {
+//         const role = msg.role === 'user' ? 'user' : 'model';
+//         const parts = [];
+//         if (msg.content) parts.push({ text: msg.content });
+//         if (msg.tool_calls && msg.tool_calls.length) {
+//           for (const call of msg.tool_calls) {
+//             const fc = { name: call.function.name, args: call.function.arguments || {} };
+//             if (call.id) fc.id = call.id;
+//             parts.push({ functionCall: fc });
+//           }
+//         }
+//         if (parts.length) contents.push({ role, parts });
+//       } else if (msg.role === 'tool') {
+//         let resp; try { resp = JSON.parse(msg.content); } catch (e) { resp = { result: String(msg.content) }; }
+//         if (resp === null || typeof resp !== 'object') resp = { result: resp };
+//         const last = contents[contents.length - 1];
+//         const part = { functionResponse: { name: msg.tool_name, response: resp } };
+//         if (last && last.role === 'user' && last.parts.some((p) => p.functionResponse)) last.parts.push(part);
+//         else contents.push({ role: 'user', parts: [part] });
+//       }
+//     }
+//     return contents;
+//   }
+//   function toGeminiTools(tools) {
+//     if (!tools || !tools.length) return undefined;
+//     return [{ functionDeclarations: tools.map((t) => ({
+//       name: t.function.name, description: t.function.description, parameters: t.function.parameters,
+//     })) }];
+//   }
+//   async function geminiChat(messages, tools, { onToken, signal } = {}) {
+//     const systemPrompt = (messages.find((m) => m.role === 'system') || {}).content || '';
+//     const gtools = toGeminiTools(tools);
+//     const body = {
+//       model: CFG.geminiModel,
+//       contents: toGeminiContents(messages),
+//       ...(systemPrompt ? { systemInstruction: { parts: [{ text: systemPrompt }] } } : {}),
+//       ...(gtools ? { tools: gtools } : {}),
+//       generationConfig: { temperature: 0.4 }, // Worker forces maxOutputTokens
+//     };
+//     const res = await fetch(workerBase() + '/api/chat', {
+//       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+//       body: JSON.stringify(body),
+//     });
+//     if (!res.ok) {
+//       let info = {}; try { info = await res.json(); } catch (e) {}
+//       const ec = (info.error && info.error.code) || ('http_' + res.status);
+//       const em = (info.error && info.error.message) || ('Worker error ' + res.status);
+//       const err = new Error(em); err.workerCode = ec; err.status = res.status; throw err;
+//     }
+//     let content = '', toolCalls = [];
+//     for await (const chunk of readSSEJSON(res)) {
+//       const cand = chunk.candidates && chunk.candidates[0];
+//       const parts = cand && cand.content && cand.content.parts;
+//       if (!parts) continue;
+//       for (const part of parts) {
+//         if (part.text) { content += part.text; onToken && onToken(part.text); }
+//         if (part.functionCall) {
+//           toolCalls.push({ id: part.functionCall.id || '', function: {
+//             name: part.functionCall.name, arguments: part.functionCall.args || {} } });
+//         }
+//       }
+//     }
+//     return { role: 'assistant', content, tool_calls: toolCalls };
+//   }
+// 
+//   /* ──────────── OpenRouter client (browser → Worker → OpenRouter, OpenAI-compatible SSE) ──────────── */
+//   function toOpenAIMessages(messages) {
+//     return messages.map((m) => {
+//       if (m.role === 'tool') {
+//         return { role: 'tool', tool_call_id: m.tool_call_id || m.tool_name || 'call', content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content) };
+//       }
+//       if (m.role === 'assistant' && m.tool_calls && m.tool_calls.length) {
+//         return { role: 'assistant', content: m.content || '', tool_calls: m.tool_calls.map((c, i) => ({
+//           id: c.id || ('call_' + i), type: 'function',
+//           function: { name: c.function.name, arguments: typeof c.function.arguments === 'string' ? c.function.arguments : JSON.stringify(c.function.arguments || {}) } })) };
+//       }
+//       return { role: m.role === 'model' ? 'assistant' : m.role, content: m.content || '' };
+//     });
+//   }
+//   async function openrouterChat(messages, tools, { onToken, signal } = {}) {
+//     const res = await fetch(workerBase() + '/api/chat', {
+//       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+//       body: JSON.stringify({ provider: 'openrouter', model: CFG.orModel, messages: toOpenAIMessages(messages),
+//         ...(tools && tools.length ? { tools } : {}), stream: true, generationConfig: { temperature: 0.4 } }),
+//     });
+//     if (!res.ok) {
+//       let info = {}; try { info = await res.json(); } catch (e) {}
+//       const err = new Error((info.error && info.error.message) || ('Worker error ' + res.status));
+//       err.workerCode = (info.error && info.error.code) || ('http_' + res.status); err.status = res.status; throw err;
+//     }
+//     let content = ''; const acc = {};
+//     for await (const chunk of readSSEJSON(res)) {
+//       const choice = chunk.choices && chunk.choices[0];
+//       const delta = choice && choice.delta;
+//       if (!delta) continue;
+//       if (delta.content) { content += delta.content; onToken && onToken(delta.content); }
+//       if (delta.tool_calls) {
+//         for (const tc of delta.tool_calls) {
+//           const i = tc.index != null ? tc.index : 0;
+//           const a = acc[i] || (acc[i] = { id: '', name: '', args: '' });
+//           if (tc.id) a.id = tc.id;
+//           if (tc.function) { if (tc.function.name) a.name = tc.function.name; if (tc.function.arguments) a.args += tc.function.arguments; }
+//         }
+//       }
+//     }
+//     const toolCalls = Object.keys(acc).map((k) => { const a = acc[k]; let args = {};
+//       try { args = a.args ? JSON.parse(a.args) : {}; } catch (e) { args = {}; }
+//       return { id: a.id || ('call_' + k), function: { name: a.name, arguments: args } }; }).filter((c) => c.function.name);
+//     return { role: 'assistant', content, tool_calls: toolCalls };
+//   }
+// 
+//   async function ollamaChat(messages, tools, { onToken, signal } = {}) {
+//     const res = await fetch(base() + '/api/chat', {
+//       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal,
+//       body: JSON.stringify({ model: CFG.model, messages,
+//         ...(tools && tools.length ? { tools } : {}),
+//         stream: true, keep_alive: KEEP_ALIVE, options: { temperature: 0.4 } }),
+//     });
+//     if (!res.ok) throw new Error('Ollama /api/chat ' + res.status);
+//     let content = '', toolCalls = [], role = 'assistant';
+//     for await (const chunk of readNDJSON(res)) {
+//       const m = chunk.message;
+//       if (m) {
+//         if (m.role) role = m.role;
+//         if (m.content) { content += m.content; onToken && onToken(m.content); }
+//         if (m.tool_calls && m.tool_calls.length) toolCalls = toolCalls.concat(m.tool_calls);
+//       }
+//       if (chunk.done) break;
+//     }
+//     return { role, content, tool_calls: toolCalls };
+//   }
+// 
+//   async function listModels(signal) {
+//     const res = await fetch(base() + '/api/tags', { signal, headers: { Accept: 'application/json' } });
+//     if (!res.ok) throw new Error('/api/tags ' + res.status);
+//     const data = await res.json();
+//     return (data.models || []).map((m) => ({
+//       name: m.name,
+//       tools: Array.isArray(m.capabilities) ? m.capabilities.includes('tools') : undefined,
+//       size: m.details && m.details.parameter_size,
+//     }));
+//   }
+//   function warmPing() {
+//     fetch(base() + '/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+//       body: JSON.stringify({ model: CFG.model, messages: [{ role: 'user', content: 'hi' }],
+//         stream: false, keep_alive: KEEP_ALIVE, options: { num_predict: 1 } }) }).catch(() => {});
+//   }
+//   async function probe() {
+//     const ctrl = new AbortController();
+//     // generous: slow mobile networks legitimately take >2.5s to first byte
+//     const timer = setTimeout(() => ctrl.abort(), 7000);
+//     try {
+//       if (CFG.provider !== 'ollama') {
+//         const res = await fetch(workerBase() + '/', { signal: ctrl.signal, headers: { Accept: 'application/json' } });
+//         clearTimeout(timer);
+//         return res.ok ? { ok: true, models: [] } : { ok: false, reason: 'http-' + res.status };
+//       }
+//       const res = await fetch(base() + '/api/tags', { signal: ctrl.signal, headers: { Accept: 'application/json' } });
+//       clearTimeout(timer);
+//       if (!res.ok) return { ok: false, reason: 'http-' + res.status };
+//       const data = await res.json();
+//       return { ok: true, models: Array.isArray(data.models) ? data.models : [] };
+//     } catch (e) { clearTimeout(timer); return { ok: false, reason: e.name === 'AbortError' ? 'timeout' : 'unreachable' }; }
+//   }
+// 
+//   /* ──────────── tools + safe dispatcher + grounded prompt ──────────── */
+//   const AGENT_TOOLS = [
+//     { type:'function', function:{ name:'go_to_section', description:'Smooth-scroll the page to a named section. Map "projects"/"portfolio" to "work".',
+//       parameters:{ type:'object', properties:{ id:{ type:'string', enum:SECTION_IDS } }, required:['id'] } } },
+//     { type:'function', function:{ name:'switch_theme', description:'Set the visual theme.',
+//       parameters:{ type:'object', properties:{ theme:{ type:'string', enum:THEMES } }, required:['theme'] } } },
+//     { type:'function', function:{ name:'click_text', description:'Click the on-page link or button whose visible text matches the query.',
+//       parameters:{ type:'object', properties:{ text:{ type:'string' } }, required:['text'] } } },
+//     { type:'function', function:{ name:'highlight', description:'Visually outline a section (by id) to draw attention.',
+//       parameters:{ type:'object', properties:{ target:{ type:'string', enum:SECTION_IDS } }, required:['target'] } } },
+//     { type:'function', function:{ name:'run_command', description:'Run a site command.',
+//       parameters:{ type:'object', properties:{ command:{ type:'string', enum:['copy_email','download_resume','open_github','confetti','cycle_theme','scroll_top','open_palette'] } }, required:['command'] } } },
+//     { type:'function', function:{ name:'get_state', description:'Read the current section, scroll position, and theme.', parameters:{ type:'object', properties:{} } } },
+//     { type:'function', function:{ name:'list_sections', description:'List the sections available on the page.', parameters:{ type:'object', properties:{} } } },
+//     { type:'function', function:{ name:'present_options', description:'Show the user clickable choice buttons when they should pick one option (e.g. a theme: cream, midnight, mono; or a page). Use this instead of asking them to type the choice. This must be your ONLY tool call that turn — show the buttons, then wait for their tap.',
+//       parameters:{ type:'object', properties:{ question:{ type:'string', description:'Short question shown above the buttons (optional).' }, options:{ type:'array', items:{ type:'string' }, description:'The choices; each becomes a clickable button.' } }, required:['options'] } } },
+//     { type:'function', function:{ name:'fill_contact_form', description:'Open the contact form and pre-fill it for the user. Use when they want to write, send, or draft an email/message to Arumugam: write a short, polite message from what they said and pass it as "message". Include their name/email only if they told you. The form is NOT sent — the user reviews the draft and presses Send themselves.',
+//       parameters:{ type:'object', properties:{ name:{ type:'string', description:'sender name, only if the user gave it' }, email:{ type:'string', description:'sender email, only if the user gave it' }, message:{ type:'string', description:'the drafted message, plain friendly English' } }, required:['message'] } } },
+//   ];
+//   function dispatchTool(name, args) {
+//     const A = window.AGENT;
+//     if (!A) return { ok: false, error: 'AGENT not ready' };
+//     try {
+//       switch (name) {
+//         case 'go_to_section': return A.goToSection(String(args.id || ''));
+//         case 'switch_theme':  return A.switchTheme(String(args.theme || ''));
+//         case 'click_text':    return A.clickText(String(args.text || ''));
+//         case 'highlight':     return A.highlight(String(args.target || ''));
+//         case 'run_command':   return A.runCommand(String(args.command || ''));
+//         case 'get_state':     return A.getState();
+//         case 'list_sections': return { ok: true, sections: A.listSections() };
+//         case 'present_options': return renderChoices(args.question, args.options);
+//         case 'fill_contact_form': return A.fillContact({ name: args.name, email: args.email, message: args.message });
+//         default:              return { ok: false, error: 'unknown tool: ' + name };
+//       }
+//     } catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+//   }
+//   function chipLabel(name, args, r) {
+//     if (!r || !r.ok) return { cls: 'fail', text: (r && r.error) || ('couldn’t run ' + name) };
+//     switch (name) {
+//       case 'go_to_section': return { cls: 'ok', text: 'scrolled to ' + r.scrolledTo };
+//       case 'switch_theme':  return { cls: 'ok', text: 'theme → ' + r.theme };
+//       case 'click_text':    return { cls: 'ok', text: 'clicked “' + r.clicked + '”' };
+//       case 'highlight':     return { cls: 'ok', text: 'highlighted ' + r.highlighted };
+//       case 'run_command':   return { cls: 'ok', text: 'ran: ' + r.ran };
+//       case 'fill_contact_form': return { cls: 'ok', text: (r.filled && r.filled.length) ? 'drafted it in the form — review & press Send' : 'opened the contact form' };
+//       default:              return null;
+//     }
+//   }
+// 
+//   let PROFILE = null;
+//   const FALLBACK_PROFILE = { name:'Arumugam G', title:'Software Engineer', location:'Thiruvananthapuram, India',
+//     email:'garumugamtvm@gmail.com', github:'https://github.com/arumugamtvm',
+//     skills:['JavaScript','TypeScript','C#','Dart','Node.js','React','HTML/CSS','Three.js / WebGL','Git','REST APIs','Model Context Protocol (MCP)'], projects:[] };
+//   async function loadProfile() {
+//     if (PROFILE) return PROFILE;
+//     try { const r = await fetch('profile.json', { headers: { Accept: 'application/json' } });
+//       if (r.ok) { PROFILE = await r.json(); return PROFILE; } } catch (e) {}
+//     PROFILE = FALLBACK_PROFILE; return PROFILE;
+//   }
+//   function buildSystemPrompt() {
+//     const p = PROFILE || FALLBACK_PROFILE;
+//     const projects = (p.projects || []).map((x) => '- ' + x.name + ': ' + x.description).join('\n') || '(see the Work section)';
+//     return [
+//       'You are the guide on ' + p.name + '’s portfolio website (' + p.title + (p.location ? ', ' + p.location : '') + ').',
+//       'Every turn, do two things: (1) reply in the chat, and (2) when the person wants to move, see, or change something on the page, call exactly one tool to do it.',
+//       '',
+//       'Pages on this site: hero, about, skills, work, path, contact. Themes: cream, midnight, mono.',
+//       'If they say "projects" or "portfolio", that is the "work" page — use go_to_section with id "work". "experience" or "journey" means "path". "contact" or "hire" means "contact".',
+//       'Call a tool when they ask to go somewhere, scroll, change theme, highlight a part, copy the email, get the resume, or open GitHub. Otherwise just reply with words. Use one tool, then say what you did in one short, friendly sentence.',
+//       'Only the listed tools exist — never make up a tool name.',
+//       'A small pointer moves on the page when you act — it shows the person where to look. So prefer doing the thing over describing it.',
+//       'If they want to write, send, or draft an email or message to ' + p.name + ': call fill_contact_form. Write a short, polite message from what they told you and pass it as "message" (add their name/email only if they gave them). If the tool says the draft is complete, a "Send it" button is already on screen — just tell them to check the draft and tap it. If fields are missing, ask for them. You can never send it yourself.',
+//       'Ask OR act — never both in one turn. When the user should pick from a few options (like a theme or a page), call present_options ALONE and stop; wait for their tap. Never ask "which would you prefer?" in plain text, and never act before they answer.',
+//       'You may use light Markdown in replies: **bold**, bullet lists with -, and [links](https://...). Keep replies short.',
+//       '',
+//       'Write in clear, simple English. Be warm, short, and professional — 1 to 3 short sentences. No headings, no heavy jargon. Speak as the site ("I can show you..."), not as ' + p.name + '.',
+//       'Only use the facts below to answer about ' + p.name + '. If you do not know something, say so and offer to take them to the contact page. Never make up jobs, dates, or numbers.',
+//       '',
+//       'ABOUT: ' + (p.summary || ''),
+//       'SKILLS: ' + (p.skills || []).join(', '),
+//       'PROJECTS:\n' + projects,
+//       'CONTACT: ' + (p.email || (p.contact && p.contact.email)) + ' · ' + p.github,
+//     ].join('\n');
+//   }
+// 
+//   /* ──────────── agentic loop (provider-agnostic) ──────────── */
+//   const MAX_HOPS = 3; // each hop is a separate billable Gemini call (counts against RPD + RPM)
+//   function modelChat(messages, tools, opts) {
+//     return CFG.provider === 'openrouter' ? openrouterChat(messages, tools, opts)
+//          : CFG.provider === 'gemini' ? geminiChat(messages, tools, opts)
+//          : ollamaChat(messages, tools, opts);
+//   }
+//   async function agenticChat(userText, history, { onToken, onStatus, onTool, signal, useTools } = {}) {
+//     const messages = [{ role: 'system', content: buildSystemPrompt() }, ...history, { role: 'user', content: userText }];
+//     for (let hop = 0; hop < MAX_HOPS; hop++) {
+//       const turn = await modelChat(messages, useTools ? AGENT_TOOLS : null, { onToken, signal });
+//       messages.push({ role: 'assistant', content: turn.content, ...(turn.tool_calls.length ? { tool_calls: turn.tool_calls } : {}) });
+//       if (!turn.tool_calls.length) return { final: turn.content, messages };
+//       // Ask OR act, never both: if the model shows choice buttons, that ends the
+//       // turn — any other tool calls bundled with it are dropped, and we wait for
+//       // the user's tap instead of letting the model act on an unanswered question.
+//       const optCall = turn.tool_calls.find((c) => c.function.name === 'present_options');
+//       const calls = optCall ? [optCall] : turn.tool_calls;
+//       for (const call of calls) {
+//         const fnName = call.function.name;
+//         const args = call.function.arguments || {};
+//         onStatus && onStatus('running ' + fnName + '…');
+//         let result;
+//         try { result = await Promise.resolve(dispatchTool(fnName, args)); }
+//         catch (e) { result = { ok: false, error: String((e && e.message) || e) }; }
+//         onTool && onTool(fnName, args, result);
+//         messages.push({ role: 'tool', tool_name: fnName, tool_call_id: call.id, content: JSON.stringify(result) });
+//       }
+//       if (optCall) return { final: turn.content, messages };
+//     }
+//     return { final: 'I tried a few steps but couldn’t finish — try rephrasing?', messages };
+//   }
+// 
+//   /* ──────────── chat UI controller ──────────── */
+//   const PANEL_HTML =
+//     '<header class="agent-head">' +
+//       '<span class="agent-id"><span class="agent-id-glyph" aria-hidden="true">✦</span>' +
+//         '<span class="agent-id-name">site&nbsp;<b>copilot</b></span></span>' +
+//       '<span id="agent-sub" class="agent-sub" data-agent-sub-text>ask me anything · I can move the page</span>' +
+//       '<button class="agent-icon-btn" data-agent-settings aria-label="Settings" aria-expanded="false">⚙</button>' +
+//       '<button class="agent-icon-btn" data-agent-close aria-label="Close assistant"><span class="agent-esc">esc</span></button>' +
+//     '</header>' +
+//     '<div class="agent-settings" data-agent-settings-panel hidden>' +
+//       '<label class="agent-field"><span>assistant</span>' +
+//         '<select class="agent-input-mono" data-agent-provider>' +
+//           '<option value="openrouter">Online (OpenRouter · Gemma)</option>' +
+//           '<option value="gemini">Online (Gemini)</option>' +
+//           '<option value="ollama">On your computer (Ollama)</option>' +
+//         '</select></label>' +
+//       '<label class="agent-field" data-agent-gemini-section><span>backend url</span>' +
+//         '<input class="agent-input-mono" data-agent-worker-url type="url" spellcheck="false" autocapitalize="off" /></label>' +
+//       '<label class="agent-field" data-agent-ollama-section hidden><span>endpoint</span>' +
+//         '<input class="agent-input-mono" data-agent-endpoint type="url" spellcheck="false" autocapitalize="off" /></label>' +
+//       '<label class="agent-field" data-agent-ollama-section hidden><span>model</span>' +
+//         '<select class="agent-input-mono" data-agent-model aria-describedby="agent-model-note"></select></label>' +
+//       '<p id="agent-model-note" class="agent-note" data-agent-model-note></p>' +
+//     '</div>' +
+//     '<div class="agent-log" data-agent-log role="log" aria-label="Conversation">' +
+//       '<div class="agent-welcome" data-agent-welcome>' +
+//         '<p>Ask about Arumugam’s work, or tell me where to go — I can scroll the page and open things for you.</p>' +
+//         '<div class="agent-chips" role="group" aria-label="Suggested prompts">' +
+//           '<button class="agent-chip" data-agent-suggest>Show me your projects</button>' +
+//           '<button class="agent-chip" data-agent-suggest>What can you build?</button>' +
+//           '<button class="agent-chip" data-agent-suggest>Switch to midnight theme</button>' +
+//           '<button class="agent-chip" data-agent-suggest>How do I reach you?</button>' +
+//           '<button class="agent-chip" data-agent-suggest>Write a message for me</button>' +
+//         '</div>' +
+//       '</div>' +
+//     '</div>' +
+//     '<p class="agent-sr-live" data-agent-live aria-live="polite" aria-atomic="true"></p>' +
+//     '<form class="agent-compose" data-agent-form>' +
+//       '<textarea class="agent-textarea" data-agent-input rows="1" placeholder="Message the site…" aria-label="Message" enterkeyhint="send"></textarea>' +
+//       '<button type="submit" class="agent-send" data-agent-send aria-label="Send">↩</button>' +
+//       '<button type="button" class="agent-stop" data-agent-stop aria-label="Stop generating" hidden>■</button>' +
+//     '</form>' +
+//     '<footer class="agent-status" data-agent-status>' +
+//       '<span class="db-dot" data-agent-dot aria-hidden="true"></span>' +
+//       '<span class="agent-status-net" data-agent-net>checking…</span>' +
+//       '<span class="db-sep" aria-hidden="true"></span>' +
+//       '<span class="agent-status-model" data-agent-status-model></span>' +
+//       '<span class="agent-status-spacer"></span>' +
+//       '<span class="agent-status-meta" data-agent-meta></span>' +
+//     '</footer>';
+// 
+//   let panel = null, chatOpen = false, online = false, busy = false, ctrl = null;
+//   let history = [];
+//   const $ = (s) => panel.querySelector(s);
+//   const launcher = () => document.querySelector('[data-open-chat]');
+// 
+//   /* ── safe markdown (escape first, then inline) + clickable choices ── */
+//   function escHtml(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+//   function inlineMd(x){
+//     return x
+//       .replace(/`([^`]+)`/g, '<code>$1</code>')
+//       .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+//       .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+//       .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+//   }
+//   function mdToHtml(src){
+//     const lines = escHtml(src).split('\n');
+//     let html = '', list = [], para = [];
+//     const flushList = () => { if (list.length){ html += '<ul>' + list.map((x)=>'<li>'+inlineMd(x)+'</li>').join('') + '</ul>'; list = []; } };
+//     const flushPara = () => { if (para.length){ html += '<p>' + para.map(inlineMd).join('<br>') + '</p>'; para = []; } };
+//     for (const ln of lines){
+//       const li = ln.match(/^\s*[-*]\s+(.+)/);
+//       if (li){ flushPara(); list.push(li[1]); }
+//       else if (ln.trim() === ''){ flushList(); flushPara(); }
+//       else { flushList(); para.push(ln); }
+//     }
+//     flushList(); flushPara();
+//     return html || escHtml(src);
+//   }
+//   function renderChoices(question, options){
+//     options = Array.isArray(options) ? options.filter((o)=>typeof o==='string'&&o.trim()).slice(0,12) : [];
+//     if (!options.length) return { ok:false, error:'no options' };
+//     const wrap = document.createElement('div'); wrap.className = 'agent-choices';
+//     if (question){ const q=document.createElement('p'); q.className='agent-choices-q'; q.textContent=question; wrap.appendChild(q); }
+//     const pick = (val)=>{ if (wrap.dataset.done) return; wrap.dataset.done='1'; wrap.classList.add('chosen'); send(val); };
+//     const row = document.createElement('div'); row.className='agent-choices-row';
+//     if (options.length > 5){
+//       const sel=document.createElement('select'); sel.className='agent-input-mono agent-choices-select';
+//       options.forEach((o)=>{ const op=document.createElement('option'); op.value=o; op.textContent=o; sel.appendChild(op); });
+//       const go=document.createElement('button'); go.type='button'; go.className='agent-chip agent-choices-go'; go.textContent='Go';
+//       go.addEventListener('click', ()=>pick(sel.value));
+//       row.appendChild(sel); row.appendChild(go);
+//     } else {
+//       options.forEach((o)=>{ const b=document.createElement('button'); b.type='button'; b.className='agent-chip'; b.textContent=o; b.addEventListener('click', ()=>pick(o)); row.appendChild(b); });
+//     }
+//     wrap.appendChild(row); $('[data-agent-log]').appendChild(wrap); autoscroll();
+//     return { ok:true, presented: options };
+//   }
+// 
+//   /* one-tap confirmation after the copilot drafts the contact form; the send
+//      still goes through the real form button — nothing fires without the tap */
+//   function renderContactConfirm(form) {
+//     if (!panel) return;
+//     const wrap = document.createElement('div'); wrap.className = 'agent-choices';
+//     const q = document.createElement('p'); q.className = 'agent-choices-q'; q.textContent = 'Draft is ready — send it?';
+//     const row = document.createElement('div'); row.className = 'agent-choices-row';
+//     const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'agent-chip'; b.textContent = label;
+//       b.addEventListener('click', () => { if (wrap.dataset.done) return; wrap.dataset.done = '1'; wrap.classList.add('chosen'); fn(); }); row.appendChild(b); };
+//     mk('✓ Send it', () => {
+//       addBubble('user', 'Send it');
+//       const btn = form.querySelector('[data-cf-send]');
+//       CURSOR.pointAt(btn, { label: 'sending', click: true, then: () => btn.click() });
+//       // mirror the form's own status note into the chat once it lands
+//       const note = form.querySelector('[data-cf-note]');
+//       const before = (note && note.textContent || '').trim();
+//       let tries = 0;
+//       const poll = setInterval(() => {
+//         tries++;
+//         const t = (note && note.textContent || '').trim();
+//         if (t && t !== before) { clearInterval(poll); addBubble('assistant', t); }
+//         else if (tries > 50) { clearInterval(poll); addBubble('assistant', 'Sent — check the note under the form for the delivery status.'); }
+//       }, 300);
+//     });
+//     mk('✎ I’ll edit it first', () => {
+//       addBubble('user', 'I’ll edit it first');
+//       addBubble('assistant', 'No problem — change anything you like, then press Send when you’re happy.');
+//       const f = form.querySelector('[data-cf-message]'); if (f) f.focus();
+//     });
+//     wrap.appendChild(q); wrap.appendChild(row);
+//     $('[data-agent-log]').appendChild(wrap); autoscroll();
+//   }
+// 
+//   function autoscroll() { const log = $('[data-agent-log]'); log.scrollTop = log.scrollHeight; }
+//   function clearWelcome() { const w = $('[data-agent-welcome]'); if (w) w.remove(); }
+//   function addBubble(kind, text, asMarkdown) {
+//     const wrap = document.createElement('div');
+//     wrap.className = 'agent-msg ' + (kind === 'user' ? 'is-user' : 'is-assistant');
+//     const b = document.createElement('div');
+//     b.className = 'agent-bubble';
+//     if (kind !== 'user' && asMarkdown) b.innerHTML = mdToHtml(text || '');
+//     else b.textContent = text || '';
+//     wrap.appendChild(b);
+//     $('[data-agent-log]').appendChild(wrap);
+//     autoscroll();
+//     return b;
+//   }
+//   function addThinking() {
+//     const wrap = document.createElement('div');
+//     wrap.className = 'agent-msg is-assistant';
+//     wrap.setAttribute('data-agent-thinking', '');
+//     wrap.innerHTML = '<div class="agent-bubble agent-thinking"><span></span><span></span><span></span></div>';
+//     $('[data-agent-log]').appendChild(wrap); autoscroll();
+//     return wrap;
+//   }
+//   function addToolChip(name, args, result) {
+//     const c = chipLabel(name, args, result);
+//     if (!c) return;
+//     const d = document.createElement('div');
+//     d.className = 'agent-tool ' + c.cls;
+//     d.innerHTML = '<span class="agent-tool-arrow" aria-hidden="true">↳</span><span class="agent-tool-label"></span>';
+//     d.querySelector('.agent-tool-label').textContent = c.text;
+//     $('[data-agent-log]').appendChild(d); autoscroll();
+//   }
+//   function setStatus(state, meta) {
+//     const s = $('[data-agent-status]'), dot = $('[data-agent-dot]'), net = $('[data-agent-net]');
+//     s.classList.toggle('is-offline', state === 'offline');
+//     dot.classList.toggle('off', state === 'offline');
+//     const offTxt = CFG.provider === 'ollama' ? 'offline · Ollama unreachable' : 'offline · backend unreachable';
+//     net.textContent = state === 'online' ? 'online' : state === 'offline' ? offTxt : 'checking…';
+//     $('[data-agent-status-model]').textContent = CFG.provider === 'openrouter' ? CFG.orModel : CFG.provider === 'gemini' ? CFG.geminiModel : CFG.model;
+//     if (meta !== undefined) $('[data-agent-meta]').textContent = meta || '';
+//   }
+//   function setBusy(b) {
+//     busy = b;
+//     $('[data-agent-send]').hidden = b;
+//     $('[data-agent-stop]').hidden = !b;
+//     $('[data-agent-input]').disabled = false;
+//   }
+// 
+//   /* strip <think>…</think> from streamed tokens, keep them out of the visible bubble */
+//   function makeThinkStripper() {
+//     let inThink = false, carry = '';
+//     return (delta) => {
+//       let s = carry + delta; carry = '';
+//       let out = '';
+//       while (s.length) {
+//         if (inThink) {
+//           const end = s.indexOf('</think>');
+//           if (end === -1) { if (s.length > 8) s = s.slice(-8); carry = s; break; }
+//           s = s.slice(end + 8); inThink = false;
+//         } else {
+//           const open = s.indexOf('<think>');
+//           if (open === -1) {
+//             const lt = s.lastIndexOf('<');
+//             if (lt !== -1 && '<think>'.startsWith(s.slice(lt))) { out += s.slice(0, lt); carry = s.slice(lt); }
+//             else out += s;
+//             break;
+//           }
+//           out += s.slice(0, open); s = s.slice(open + 7); inThink = true;
+//         }
+//       }
+//       return out;
+//     };
+//   }
+// 
+//   async function send(text) {
+//     text = (text || '').trim();
+//     if (!text || busy) return;
+//     clearWelcome();
+//     addBubble('user', text);
+//     $('[data-agent-input]').value = '';
+//     autoGrow();
+//     const liveText = [];
+//     ctrl = new AbortController();
+//     setBusy(true);
+//     // Free-tier model queues can stall for minutes — don't show "thinking" forever.
+//     let timedOut = false;
+//     const slowTimer = setTimeout(() => { timedOut = true; try { ctrl.abort(); } catch (e) {} }, 75000);
+//     const slowNote = setTimeout(() => { setStatus(online ? 'online' : 'offline', 'the free model is waking up — give it a few more seconds…'); }, 9000);
+//     const thinkingEl = addThinking();
+//     let bubble = null;
+//     const strip = makeThinkStripper();
+//     const onToken = (delta) => {
+//       const vis = strip(delta);
+//       if (!vis) return;
+//       if (!bubble) { if (thinkingEl) thinkingEl.remove(); bubble = addBubble('assistant', ''); bubble.setAttribute('aria-busy', 'true'); }
+//       bubble.textContent += vis; liveText.push(vis); autoscroll();
+//     };
+//     try {
+//       let toolRan = false, sawOptions = false;
+//       const r = await agenticChat(text, history.slice(-8), {
+//         onToken,
+//         onStatus: (m) => setStatus(online ? 'online' : 'offline', m),
+//         onTool: (n, a, res) => {
+//           if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+//           toolRan = true; if (n === 'present_options') sawOptions = true;
+//           addToolChip(n, a, res);
+//         },
+//         // Cloud providers: always send full capability — the offline probe can
+//         // be wrong (slow network, transient block) and the POST is the real test.
+//         signal: ctrl.signal, useTools: online || CFG.provider !== 'ollama',
+//       });
+//       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+//       if (!online) { online = true; setStatus('online'); } // the POST succeeded — probe was wrong
+//       // Never leave an empty bubble: if the model returned no words, say
+//       // something sensible — unless choice buttons are already on screen.
+//       const finalText = (liveText.join('') || strip(r.final || '') || r.final || '').trim()
+//         || (sawOptions ? '' : toolRan ? 'Done — anything else you’d like to see?' : 'Hmm, I didn’t get a reply that time. Please try again.');
+//       if (!bubble && finalText) bubble = addBubble('assistant', finalText, true);
+//       else if (bubble) bubble.innerHTML = mdToHtml(finalText);
+//       if (bubble) bubble.removeAttribute('aria-busy');
+//       $('[data-agent-live]').textContent = finalText.slice(0, 220);
+//       history.push({ role: 'user', content: text });
+//       history.push({ role: 'assistant', content: (r.final || finalText || '(showed choice buttons)') });
+//       setStatus(online ? 'online' : 'offline', '');
+//     } catch (e) {
+//       if (thinkingEl && thinkingEl.parentNode) thinkingEl.remove();
+//       if (e && e.name === 'AbortError') {
+//         if (bubble) bubble.removeAttribute('aria-busy');
+//         if (timedOut) addError('rate_limited_slow'); // watchdog fired: tell them instead of spinning forever
+//       }
+//       else { addError(e && e.workerCode); }
+//     } finally { clearTimeout(slowTimer); clearTimeout(slowNote); setBusy(false); ctrl = null; }
+//   }
+// 
+//   function addError(workerCode) {
+//     const isGemini = CFG.provider === 'gemini';
+//     const wc = workerCode || '';
+//     const msg = (wc === 'gemini_forbidden' || wc === 'openrouter_forbidden') ? '⚠ The model key was refused. You can switch the assistant in settings.'
+//       : wc === 'daily_budget_exhausted' ? '⚠ The assistant has reached today’s usage limit. Please try again tomorrow, or switch the assistant in settings.'
+//       : /rate_limited/.test(wc) ? '⚠ The assistant is busy right now. Please try again in a moment.'
+//       : CFG.provider === 'ollama' ? '⚠ I could not reach the local model.'
+//       : '⚠ I can’t reach the assistant service from this network. Some mobile networks block it — Wi-Fi or another network usually works. You can always use the contact form below instead.';
+//     const d = document.createElement('div');
+//     d.className = 'agent-error'; d.setAttribute('role', 'alert');
+//     d.innerHTML = '<span></span>' +
+//       '<button class="agent-link" data-agent-retry>retry</button>' +
+//       '<button class="agent-link" data-agent-copyctx>copy my info for another AI →</button>';
+//     d.querySelector('span').textContent = msg;
+//     $('[data-agent-log]').appendChild(d); autoscroll();
+//   }
+// 
+//   function offlineMessage() {
+//     const enable = 'This live AI runs on a local Ollama model on Arumugam’s machine — private by design, ' +
+//       'nothing leaves the device, no cloud, no API keys. To run it yourself: clone the repo, ' +
+//       '`ollama pull qwen3-coder:30b`, start Ollama, and open the site from http://localhost.';
+//     if (location.protocol === 'https:')
+//       return 'The live AI assistant is local-first — it talks to an Ollama model on localhost, which the ' +
+//         'deployed site can’t reach (the browser and Ollama restrict cross-origin calls to a localhost server — ' +
+//         'that’s expected, and keeps it private). ' + enable + ' Meanwhile, here’s a quick guided tour:';
+//     return 'I couldn’t reach a local Ollama instance right now. ' + enable + ' In the meantime, a guided tour:';
+//   }
+// 
+//   async function renderScriptedFallback() {
+//     const p = await loadProfile();
+//     const QA = [
+//       { label: 'About',    go: 'about',   answer: () => (p.name + ' — ' + p.title + '. ' + (p.summary || '')).trim() },
+//       { label: 'Skills',   go: 'skills',  answer: () => 'Core stack: ' + (p.skills || FALLBACK_PROFILE.skills).join(', ') + '.' },
+//       { label: 'Projects', go: 'work',    answer: () => (p.projects || []).map((x) => '• ' + x.name + ' — ' + x.description).join('\n') || 'See the Work section + GitHub.' },
+//       { label: 'Contact',  go: 'contact', answer: () => 'Email: ' + (p.email || (p.contact && p.contact.email)) + '\nGitHub: ' + p.github },
+//     ];
+//     const row = document.createElement('div');
+//     row.className = 'agent-chips';
+//     QA.forEach((item) => {
+//       const b = document.createElement('button');
+//       b.className = 'agent-chip'; b.textContent = item.label;
+//       b.addEventListener('click', () => { addBubble('user', item.label); addBubble('assistant', item.answer()); window.AGENT.goToSection(item.go); });
+//       row.appendChild(b);
+//     });
+//     $('[data-agent-log]').appendChild(row); autoscroll();
+//   }
+// 
+//   function autoGrow() {
+//     const ta = $('[data-agent-input]'); if (!ta) return;
+//     ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px';
+//   }
+// 
+//   let offlineNoticeShown = false, reprobeTimer = 0;
+//   function scheduleReprobe() {
+//     // Quietly keep checking while offline — slow or flaky networks (mobile
+//     // especially) often come back; flip to online without user action.
+//     clearTimeout(reprobeTimer);
+//     if (online || !chatOpen) return;
+//     reprobeTimer = setTimeout(async () => {
+//       if (online || !chatOpen) return;
+//       const p = await probe();
+//       if (p.ok) { online = true; offlineNoticeShown = false; setStatus('online'); }
+//       else scheduleReprobe();
+//     }, 30000);
+//   }
+//   async function refreshConnection() {
+//     setStatus('checking');
+//     const p = await probe();
+//     online = p.ok;
+//     setStatus(online ? 'online' : 'offline');
+//     if (online) offlineNoticeShown = false; else scheduleReprobe();
+//     $('[data-agent-input]').disabled = false;
+//     if (CFG.provider === 'ollama') {
+//       if (online) {
+//         warmPing();
+//         try {
+//           const models = await listModels();
+//           const sel = $('[data-agent-model]'); sel.innerHTML = '';
+//           let hasCfg = false;
+//           models.forEach((m) => {
+//             const o = document.createElement('option');
+//             o.value = m.name;
+//             o.textContent = m.name + (m.tools === false ? ' — text only' : '');
+//             if (m.name === CFG.model) { o.selected = true; hasCfg = true; }
+//             sel.appendChild(o);
+//           });
+//           if (!hasCfg && models.length) {
+//             const tcap = models.find((m) => m.tools) || models[0];
+//             CFG.model = tcap.name; sel.value = tcap.name; saveCfg();
+//           }
+//           setStatus('online');
+//           updateModelNote(models);
+//         } catch (e) {}
+//       } else if (!offlineNoticeShown) {
+//         offlineNoticeShown = true; // never stack duplicate notices on re-probes
+//         clearWelcome();
+//         addBubble('assistant', offlineMessage());
+//         renderScriptedFallback();
+//       }
+//     } else { // cloud providers (via Worker)
+//       if (online) setStatus('online');
+//       else if (!offlineNoticeShown) {
+//         offlineNoticeShown = true;
+//         clearWelcome();
+//         addBubble('assistant', offlineWorkerMessage());
+//         renderScriptedFallback();
+//       }
+//     }
+//   }
+//   function updateModelNote(models) {
+//     const note = $('[data-agent-model-note]');
+//     const m = (models || []).find((x) => x.name === CFG.model);
+//     if (m && m.tools === false) { note.textContent = 'this model can chat but can’t drive the page.'; note.classList.add('warn'); }
+//     else { note.textContent = ''; note.classList.remove('warn'); }
+//   }
+//   function saveCfg() {
+//     try {
+//       localStorage.setItem('ws-agent-provider', CFG.provider);
+//       localStorage.setItem('ws-agent-worker-url', CFG.workerUrl);
+//       localStorage.setItem('ws-agent-endpoint', CFG.endpoint);
+//       localStorage.setItem('ws-agent-model', CFG.model);
+//       localStorage.setItem('ws-agent-gemini-model', CFG.geminiModel);
+//       localStorage.setItem('ws-agent-or-model', CFG.orModel);
+//     } catch (e) {}
+//   }
+//   function offlineWorkerMessage() {
+//     return 'I can’t reach my assistant service right now — some networks (often mobile data) block it, ' +
+//       'and it usually works on Wi-Fi or another network. I’ll keep retrying quietly. ' +
+//       'Meanwhile the quick links below work fully, and you can always email Arumugam directly — the address is in the Contact section:';
+//   }
+// 
+//   function build() {
+//     panel = document.createElement('section');
+//     panel.id = 'agent-panel';
+//     panel.className = 'ws-chat agent-panel';
+//     panel.setAttribute('role', 'dialog');
+//     panel.setAttribute('aria-label', 'Site assistant');
+//     panel.hidden = true;
+//     panel.innerHTML = PANEL_HTML;
+//     document.body.appendChild(panel);
+// 
+//     $('[data-agent-endpoint]').value = CFG.endpoint;
+//     $('[data-agent-worker-url]').value = CFG.workerUrl;
+//     $('[data-agent-provider]').value = CFG.provider;
+//     $('[data-agent-status-model]').textContent = CFG.provider === 'openrouter' ? CFG.orModel : CFG.provider === 'gemini' ? CFG.geminiModel : CFG.model;
+// 
+//     function updateSettingsView() {
+//       const isOllama = CFG.provider === 'ollama';
+//       panel.querySelectorAll('[data-agent-ollama-section]').forEach((el) => { el.hidden = !isOllama; });
+//       panel.querySelectorAll('[data-agent-gemini-section]').forEach((el) => { el.hidden = isOllama; });
+//       const sub = $('[data-agent-sub-text]'); if (sub) sub.textContent = isOllama ? 'runs on your computer' : 'ask me anything · I can move the page';
+//     }
+//     updateSettingsView();
+// 
+//     $('[data-agent-close]').addEventListener('click', closeChat);
+//     $('[data-agent-form]').addEventListener('submit', (e) => { e.preventDefault(); send($('[data-agent-input]').value); });
+//     $('[data-agent-stop]').addEventListener('click', () => { if (ctrl) ctrl.abort(); });
+//     $('[data-agent-input]').addEventListener('input', autoGrow);
+//     $('[data-agent-input]').addEventListener('keydown', (e) => {
+//       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send($('[data-agent-input]').value); }
+//     });
+//     panel.querySelectorAll('[data-agent-suggest]').forEach((b) =>
+//       b.addEventListener('click', () => send(b.textContent)));
+//     $('[data-agent-settings]').addEventListener('click', (e) => {
+//       const sp = $('[data-agent-settings-panel]'); const open = sp.hidden;
+//       sp.hidden = !open; e.currentTarget.setAttribute('aria-expanded', String(open));
+//     });
+//     $('[data-agent-provider]').addEventListener('change', (e) => { CFG.provider = e.target.value; saveCfg(); updateSettingsView(); clearWelcome(); refreshConnection(); });
+//     $('[data-agent-worker-url]').addEventListener('change', (e) => { CFG.workerUrl = e.target.value.trim() || CFG.workerUrl; saveCfg(); refreshConnection(); });
+//     $('[data-agent-endpoint]').addEventListener('change', (e) => { CFG.endpoint = e.target.value.trim() || 'http://localhost:11434'; saveCfg(); refreshConnection(); });
+//     $('[data-agent-model]').addEventListener('change', (e) => { CFG.model = e.target.value; saveCfg(); setStatus(online ? 'online' : 'offline'); });
+//     panel.addEventListener('click', (e) => {
+//       const t = e.target.closest('[data-agent-retry], [data-agent-copyctx]');
+//       if (!t) return;
+//       if (t.hasAttribute('data-agent-retry')) refreshConnection();
+//       else { const v = 'Arumugam G — Software Engineer (Thiruvananthapuram, India).\nProfile: https://arumugamg.com/profile.json\nGuide: https://arumugamg.com/llms.txt\nGitHub: https://github.com/arumugamtvm';
+//         (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).catch(() => {}); egg('agent context copied ✶'); }
+//     });
+//   }
+// 
+//   function openChat() {
+//     if (!panel) build();
+//     panel.hidden = false;
+//     requestAnimationFrame(() => panel.classList.add('is-open'));
+//     chatOpen = true;
+//     const l = launcher(); if (l) l.setAttribute('aria-expanded', 'true');
+//     loadProfile();
+//     refreshConnection();
+//     setTimeout(() => $('[data-agent-input]').focus(), 80);
+//   }
+//   function closeChat() {
+//     if (!panel) return;
+//     panel.classList.remove('is-open');
+//     chatOpen = false;
+//     const l = launcher(); if (l) l.setAttribute('aria-expanded', 'false');
+//     if (ctrl) { try { ctrl.abort(); } catch (e) {} }
+//     setTimeout(() => { if (!chatOpen) panel.hidden = true; }, 240);
+//     if (l) l.focus();
+//   }
+//   window.__openChat = openChat;
+// 
+//   document.querySelectorAll('[data-open-chat]').forEach((b) => b.addEventListener('click', openChat));
+//   window.addEventListener('keydown', (e) => {
+//     if (e.key === 'Escape' && chatOpen) { e.stopPropagation(); closeChat(); }
+//   }, true);
+// 
+//   const providerLabel = CFG.provider === 'ollama' ? 'local Ollama' : CFG.provider === 'gemini' ? 'Gemini via Worker' : 'OpenRouter/Gemma via Worker';
+//   console.log('%c✦ site copilot ready — click ✦ or ⌘K → "Chat with this site" (' + providerLabel + ').', 'font-size:12px;color:#6b4eff');
+// })();
 })();
 
 
 /* ════════════════════════════════════════════════════════════════
-   CONTACT FORM → Worker /api/contact → Resend email (key server-side).
-   Reads the same Worker URL the chat uses (localStorage ws-agent-worker-url).
+   BACKEND INTEGRATION — CONTACT FORM (COMMENTED OUT FOR LOCAL DEV)
    ════════════════════════════════════════════════════════════════ */
-(() => {
-  'use strict';
-  const form = document.querySelector('[data-contact-form]');
-  if (!form) return;
-  const DEFAULT_WORKER = 'https://arumugamg-copilot.test-dev-user-606.workers.dev';
-  const workerUrl = () => {
-    try { return (localStorage.getItem('ws-agent-worker-url') || DEFAULT_WORKER).replace(/\/$/, ''); }
-    catch (e) { return DEFAULT_WORKER; }
-  };
-  const note = form.querySelector('[data-cf-note]');
-  const btn = form.querySelector('[data-cf-send]');
-  const val = (sel) => (form.querySelector(sel) || {}).value || '';
-  const setNote = (msg, cls) => { note.textContent = msg; note.className = 'contact-note ' + (cls || ''); };
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = val('[data-cf-name]').trim();
-    const email = val('[data-cf-email]').trim();
-    const message = val('[data-cf-message]').trim();
-    const company = val('[data-cf-company]'); // honeypot
-    if (!name || !email || !message) { setNote('Please fill in your name, email, and message.', 'err'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setNote('Please enter a valid email address.', 'err'); return; }
-    btn.disabled = true; setNote('Sending…', '');
-    try {
-      const res = await fetch(workerUrl() + '/api/contact', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message, company }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.ok) { setNote('Thanks! Your message was sent. I’ll get back to you soon.', 'ok'); form.reset(); }
-      else { setNote((data.error && data.error.message) || 'Could not send. Please email garumugamtvm@gmail.com directly.', 'err'); }
-    } catch (err) {
-      setNote('Could not reach the server. Please email garumugamtvm@gmail.com directly.', 'err');
-    } finally { btn.disabled = false; }
-  });
-})();
+// /*
+// /* ════════════════════════════════════════════════════════════════
+//    CONTACT FORM → Worker /api/contact → Resend email (key server-side).
+//    Reads the same Worker URL the chat uses (localStorage ws-agent-worker-url).
+//    ════════════════════════════════════════════════════════════════ */
+// (() => {
+//   'use strict';
+//   const form = document.querySelector('[data-contact-form]');
+//   if (!form) return;
+//   const DEFAULT_WORKER = 'https://arumugamg-copilot.test-dev-user-606.workers.dev';
+//   const workerUrl = () => {
+//     try { return (localStorage.getItem('ws-agent-worker-url') || DEFAULT_WORKER).replace(/\/$/, ''); }
+//     catch (e) { return DEFAULT_WORKER; }
+//   };
+//   const note = form.querySelector('[data-cf-note]');
+//   const btn = form.querySelector('[data-cf-send]');
+//   const val = (sel) => (form.querySelector(sel) || {}).value || '';
+//   const setNote = (msg, cls) => { note.textContent = msg; note.className = 'contact-note ' + (cls || ''); };
+//   form.addEventListener('submit', async (e) => {
+//     e.preventDefault();
+//     const name = val('[data-cf-name]').trim();
+//     const email = val('[data-cf-email]').trim();
+//     const message = val('[data-cf-message]').trim();
+//     const company = val('[data-cf-company]'); // honeypot
+//     if (!name || !email || !message) { setNote('Please fill in your name, email, and message.', 'err'); return; }
+//     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setNote('Please enter a valid email address.', 'err'); return; }
+//     btn.disabled = true; setNote('Sending…', '');
+//     try {
+//       const res = await fetch(workerUrl() + '/api/contact', {
+//         method: 'POST', headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({ name, email, message, company }),
+//       });
+//       const data = await res.json().catch(() => ({}));
+//       if (res.ok && data.ok) { setNote('Thanks! Your message was sent. I’ll get back to you soon.', 'ok'); form.reset(); }
+//       else { setNote((data.error && data.error.message) || 'Could not send. Please email garumugamtvm@gmail.com directly.', 'err'); }
+//     } catch (err) {
+//       setNote('Could not reach the server. Please email garumugamtvm@gmail.com directly.', 'err');
+//     } finally { btn.disabled = false; }
+//   });
+// })();
+// */
